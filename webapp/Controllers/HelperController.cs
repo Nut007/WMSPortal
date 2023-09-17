@@ -42,9 +42,9 @@ namespace WMSPortal.Controllers
             DataTable dt = converter.ToDataTable(storers.ToList());
             return Json(dt.ToDataSourceResult(request));
         }
-        public ActionResult ExecuteReport([DataSourceRequest]DataSourceRequest request, List<StoreProcedure> parameters)
+        public ActionResult ExecuteReport([DataSourceRequest]DataSourceRequest request, List<StoreProcedure> parameters,string storeprocedureName)
         {
-            var results = _helperRepository.GetReportResult(parameters);
+            var results = _helperRepository.GetReportResult(parameters, storeprocedureName);
             var jsonResult = Json(results.ToDataSourceResult(request), JsonRequestBehavior.AllowGet);
             jsonResult.MaxJsonLength = int.MaxValue;
             return jsonResult;

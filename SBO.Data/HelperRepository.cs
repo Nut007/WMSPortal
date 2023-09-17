@@ -227,19 +227,29 @@ namespace WMSPortal.Data
             }
         }
 
-        public DataTable GetReportResult(List<StoreProcedure> parameters)
+        public DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName)
         {
-            string spName = parameters.First().PROCEDURE_NAME.Replace(";1","");
+            //string spName = parameters.First().PROCEDURE_NAME.Replace(";1","");
+            string spName = storeprocedureName.Replace(";1", "");
             var cn = new SqlConnection(this.WMSConnectionString());
             try
             {
                 cn.Open();
                 var p = new DynamicParameters();
-                foreach (var parameter in parameters)
+                IDataReader reader;
+                if (parameters == null)
                 {
-                    p.Add(parameter.COLUMN_NAME, parameter.COLUMN_VALUE);
+                    reader = cn.ExecuteReader(spName, commandType: CommandType.StoredProcedure);
                 }
-                var reader = cn.ExecuteReader(spName, p, commandType: CommandType.StoredProcedure);
+                else
+                {
+                    foreach (var parameter in parameters)
+                    {
+                        p.Add(parameter.COLUMN_NAME, parameter.COLUMN_VALUE);
+                    }
+                    reader = cn.ExecuteReader(spName, p, commandType: CommandType.StoredProcedure);
+                }
+
                 DataTable table = new DataTable();
                 table.Load(reader);
                 foreach (DataColumn column in table.Columns)

@@ -29,7 +29,9 @@
         $('#btnExecuteReport').prop('disabled', true);
         var grid = $("#parameterGrid").data("kendoGrid");
         var dataSource = grid.dataSource;
-        var rows = JSON.stringify({ 'parameters': dataSource.data().toJSON() });
+        var spName = $("#reports").data("kendoDropDownList").value();
+        
+        var rows = JSON.stringify({ 'parameters': dataSource.data().toJSON(), 'storeprocedureName': spName });
 
         $.ajax({
             method: "POST",
