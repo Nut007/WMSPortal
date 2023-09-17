@@ -18,7 +18,7 @@ namespace WMSPortal.Data
                 //db.Attachments.Add(NewAttachment);
                 //db.SaveChanges();
                 operationResult.Success = true;
-                operationResult.Message = "Attachment Added Successfully";
+                operationResult.Message = "Attachment Added Successfully.";
 
             }
             catch (Exception ex)
