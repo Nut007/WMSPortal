@@ -1,0 +1,44 @@
+﻿@{
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+<style>
+    #Sku-list {
+        width: 400px !important;
+    }
+</style>
+<script language="javascript" type="text/javascript">
+    function filterSkuInfo() {
+        var combobox = $("#Sku").data("kendoComboBox");
+        var storerKey = $("#StorerKey").data("kendoComboBox");
+
+        return {
+            sku: combobox.text(),
+            storerKey: storerKey.value()
+        };
+    }
+    
+</script>
+@(Html.Kendo().ComboBox()
+    .Name("Sku")
+    .DataValueField("Sku")
+    .DataTextField("Sku")
+    .HtmlAttributes(new { @style = "width: 100%" })
+    .HeaderTemplate("<div class=\"dropdown-header\">" +
+        "<span>Code</span>" +
+        "<span>Name</span>" +
+    "</div'>")
+        .Template("<table><tr><td width='100px'>${ Sku }</td><td width='200px'>${ DESCR  }</td></tr></table>")
+    .Filter(FilterType.Contains)
+    .AutoBind(false)
+    .MinLength(3)
+    .Events(e => e.Change("Sku_ItemChanged"))
+    .DataSource(source =>
+    {
+        source.Read(read =>
+        {
+            read.Action("GetSkuInfo", "Orders")
+                    .Data("filterSkuInfo");
+        })
+        .ServerFiltering(true);
+    })
+)

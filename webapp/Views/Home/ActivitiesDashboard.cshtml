@@ -1,0 +1,1066 @@
+﻿@model OrdersDashboardViewModel
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<!-- MAIN CONTENT -->
+<div id="content" class="right_col">
+
+    <style>
+        .dashboard-progress-bar {
+            margin-top: 10px;
+        }
+
+        .dashboard-leads-indicator {
+            text-align: center;
+        }
+
+        .dashboard_graph {
+            background: #fff;
+            padding: 7px 10px;
+        }
+
+            .dashboard_graph .col-md-9,
+            .dashboard_graph .col-md-3 {
+                padding: 0;
+            }
+
+            .dashboard_graph .x_title {
+                padding: 5px 5px 7px;
+            }
+
+                .dashboard_graph .x_title h3 {
+                    margin: 0;
+                    font-weight: normal;
+                }
+
+        .demo-placeholder {
+            height: 280px;
+        }
+
+        canvas {
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .demo {
+            position: relative;
+        }
+
+            .demo i {
+                position: absolute;
+                bottom: 10px;
+                right: 24px;
+                top: auto;
+                cursor: pointer;
+            }
+
+        .right_col {
+            background: #F7F7F7;
+        }
+
+        .progress, .progress-bar {
+            height: 28px;
+        }
+
+        .progress-bar {
+            padding: 4px;
+        }
+    </style>
+
+    <link href="~/Content/css/dashboard/custom.min.css" rel="stylesheet" />
+    <link href="~/Scripts/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet" />
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <div class="container body">
+        <div class="main_container">
+            <!-- page content -->
+            <div class="right_col" role="main" style="min-height: 2011px;">
+
+                <div class="row top_tiles">
+                    <div class="animated flipInY col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="tile-stats">
+                            <div class="icon"><i class="fa fa-caret-square-o-right"></i></div>
+                            <div class="count"><div id="openQty"></div></div>
+                            <h3 id="openRecord"></h3>
+                            <p><h5 class="padding-left-10">Same Day <span class="label label-primary" id="samedayOrder"></span></h5></p>
+                        </div>
+                    </div>
+                    <div class="animated flipInY col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="tile-stats">
+                            <div class="icon"><i class="fa fa-comments-o"></i></div>
+                            <div class="count"><div id="allocatedQty"></div></div>
+                            <h3 id="allocatedQtyPercent"></h3>
+                            <p><h5 class="padding-left-10">Urgent Order <span class="label label-danger" id="urgentOrder"></span></h5></p>
+                        </div>
+                    </div>
+                    <div class="animated flipInY col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="tile-stats">
+                            <div class="icon"><i class="fa fa-sort-amount-desc"></i></div>
+                            <div class="count"><div id="pickedQty"></div></div>
+                            <h3 id="pickedQtyPercent"></h3>
+                            <p><h5 class="padding-left-10">Completed Urgent <span class="label label-warning" id="compUrgentOrder"></span></h5></p>
+                        </div>
+                    </div>
+                    <div class="animated flipInY col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="tile-stats">
+                            <div class="icon"><i class="fa fa-check-square-o"></i></div>
+                            <div class="count"><div id="pickedOutstandingQty"></div></div>
+                            <h3 id="pickedOutstandingPercent">New Sign ups</h3>
+                            <p><h5 class="padding-left-10">Waiting for ship <span class="label label-success" id="waitingForShip"></span></h5></p>
+                        </div>
+                    </div>
+                </div>
+
+                @*<div class="row tile_count">
+                        <div class="col-md-2 col-sm-4 col-xs-6 tile_stats_count">
+                            <span class="count_top"><i class="fa fa-user"></i> Total Orders</span>
+                            <div class="count">2500</div>
+                            <span class="count_bottom"><i class="green">4% </i> From last Week</span>
+                        </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6 tile_stats_count">
+                            <span class="count_top"><i class="fa fa-clock-o"></i> Allocated</span>
+                            <div class="count">123.50</div>
+                            <span class="count_bottom"><i class="green"><i class="fa fa-sort-asc"></i>3% </i> From last Week</span>
+                        </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6 tile_stats_count">
+                            <span class="count_top"><i class="fa fa-user"></i> Packed</span>
+                            <div class="count green">2,500</div>
+                            <span class="count_bottom"><i class="green"><i class="fa fa-sort-asc"></i>34% </i> From last Week</span>
+                        </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6 tile_stats_count">
+                            <span class="count_top"><i class="fa fa-user"></i> Shipped</span>
+                            <div class="count">4,567</div>
+                            <span class="count_bottom"><i class="red"><i class="fa fa-sort-desc"></i>12% </i> From last Week</span>
+                        </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6 tile_stats_count">
+                            <span class="count_top"><i class="fa fa-user"></i> Total Expected</span>
+                            <div class="count">2,315</div>
+                            <span class="count_bottom"><i class="green"><i class="fa fa-sort-asc"></i>34% </i> From last Week</span>
+                        </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6 tile_stats_count">
+                            <span class="count_top"><i class="fa fa-user"></i> Total Received</span>
+                            <div class="count">7,325</div>
+                            <span class="count_bottom"><i class="green"><i class="fa fa-sort-asc"></i>34% </i> From last Week</span>
+                        </div>
+                    </div>*@
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="x_panel">
+                            <div class="x_title">
+                                <h2>Outbound Summary <small>Weekly progress</small></h2>
+                                <div class="filter">
+                                    <div id="reportrange" class="pull-right" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc">
+                                        <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>
+                                        <span>December 4, 2018 - January 2, 2019</span> <b class="caret"></b>
+                                    </div>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+                                <div class="col-md-9 col-sm-12 col-xs-12">
+                                    <div class="demo-container" style="height:280px">
+                                        <div id="orders_weekly_plot_chart" class="demo-placeholder" style="padding: 0px; position: relative;"><canvas class="flot-base" width="628" height="350" style="direction: ltr; position: absolute; left: 0px; top: 0px; width: 503px; height: 280px;"></canvas><div class="flot-text" style="position: absolute; top: 0px; left: 0px; bottom: 0px; right: 0px; font-size: smaller; color: rgb(84, 84, 84);"><div class="flot-x-axis flot-x1-axis xAxis x1Axis" style="position: absolute; top: 0px; left: 0px; bottom: 0px; right: 0px; display: block;"><div class="flot-tick-label tickLabel" style="position: absolute; max-width: 62px; top: 265px; left: 125px; text-align: center;">07/01/19</div><div class="flot-tick-label tickLabel" style="position: absolute; max-width: 62px; top: 265px; left: 260px; text-align: center;">13/01/19</div><div class="flot-tick-label tickLabel" style="position: absolute; max-width: 62px; top: 265px; left: 396px; text-align: center;">19/01/19</div><div class="flot-tick-label tickLabel" style="position: absolute; max-width: 62px; top: 265px; left: 57px; text-align: center;">04/01/19</div><div class="flot-tick-label tickLabel" style="position: absolute; max-width: 62px; top: 265px; left: 192px; text-align: center;">10/01/19</div><div class="flot-tick-label tickLabel" style="position: absolute; max-width: 62px; top: 265px; left: 328px; text-align: center;">16/01/19</div></div><div class="flot-y-axis flot-y1-axis yAxis y1Axis" style="position: absolute; top: 0px; left: 0px; bottom: 0px; right: 0px; display: block;"><div class="flot-tick-label tickLabel" style="position: absolute; top: 247px; left: 12px; text-align: right;">0</div><div class="flot-tick-label tickLabel" style="position: absolute; top: 206px; left: 6px; text-align: right;">20</div><div class="flot-tick-label tickLabel" style="position: absolute; top: 165px; left: 6px; text-align: right;">40</div><div class="flot-tick-label tickLabel" style="position: absolute; top: 124px; left: 6px; text-align: right;">60</div><div class="flot-tick-label tickLabel" style="position: absolute; top: 83px; left: 6px; text-align: right;">80</div><div class="flot-tick-label tickLabel" style="position: absolute; top: 42px; left: 0px; text-align: right;">100</div><div class="flot-tick-label tickLabel" style="position: absolute; top: 1px; left: 0px; text-align: right;">120</div></div></div><canvas class="flot-overlay" width="628" height="350" style="direction: ltr; position: absolute; left: 0px; top: 0px; width: 503px; height: 280px;"></canvas><div class="legend"><div style="position: absolute; width: 69px; height: 15px; top: -17px; right: 23px; background-color: rgb(255, 255, 255); opacity: 0.85;"> </div><table style="position:absolute;top:-17px;right:23px;;font-size:smaller;color:#3f3f3f"><tbody><tr><td class="legendColorBox"><div style="border:1px solid null;padding:1px"><div style="width:4px;height:0;border:5px solid rgb(150,202,89);overflow:hidden"></div></div></td><td class="legendLabel">Open Qty&nbsp;&nbsp;</td></tr></tbody></table></div></div>
+                                    </div>
+                                    <div class="tiles">
+                                        <div class="col-md-4 tile">
+                                            <span>Total Orders</span>
+                                            <h2 id="totalOrders"></h2>
+                                            <span id="sparklineTotalOrders" class="graph" style="height: 160px;"><canvas width="198" height="40" style="display: inline-block; width: 198px; height: 40px; vertical-align: top;"></canvas></span>
+                                        </div>
+                                        <div class="col-md-4 tile">
+                                            <span>Total Open Quantity</span>
+                                            <h2 id="totalOpenQty"></h2>
+                                            <span id="sparklineTotalOpenQty" class="graph" style="height: 160px;"><canvas width="200" height="40" style="display: inline-block; width: 200px; height: 40px; vertical-align: top;"></canvas></span>
+                                        </div>
+                                        <div class="col-md-4 tile">
+                                            <span>Total Shipped Quantity</span>
+                                            <h2 id="totalShippedQty"></h2>
+                                            <span id="sparklineTotalShippedQty" class="graph" style="height: 160px;"><canvas width="198" height="40" style="display: inline-block; width: 198px; height: 40px; vertical-align: top;"></canvas></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3 col-sm-12 col-xs-12">
+                                    <div>
+                                        <div class="x_title">
+                                            <h2>Top 5 Pickers</h2>
+                                            <ul class="nav navbar-right panel_toolbox">
+                                                <li>
+                                                    <a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                                                </li>
+                                                <li class="dropdown">
+                                                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                                                    <ul class="dropdown-menu" role="menu">
+                                                        <li>
+                                                            <a href="#">Settings 1</a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="#">Settings 2</a>
+                                                        </li>
+                                                    </ul>
+                                                </li>
+                                                <li>
+                                                    <a class="close-link"><i class="fa fa-close"></i></a>
+                                                </li>
+                                            </ul>
+                                            <div class="clearfix"></div>
+                                        </div>
+                                        <ul class="list-unstyled top_profiles scroll-view">
+                                            @foreach (var item in Model.WorkerPerfomanceWeekly)
+                                            {
+                                                <li class="media event">
+                                                    <a class="pull-left border-aero profile_thumb">
+                                                        <i class="fa fa-user aero"></i>
+                                                    </a>
+                                                    <div class="media-body">
+                                                        <a class="title" href="#">@item.WorkerId</a>
+                                                        <p><strong>@item.TotalQty.ToString("##,###") </strong> Total Quantity </p>
+                                                        <p>
+                                                            <small>@item.TotalOrders Orders</small>
+                                                        </p>
+                                                    </div>
+                                                </li>
+
+                                            }
+                                            @*<li class="media event">
+                                                    <a class="pull-left border-aero profile_thumb">
+                                                        <i class="fa fa-user aero"></i>
+                                                    </a>
+                                                    <div class="media-body">
+                                                        <a class="title" href="#">Ms. Mary Jane</a>
+                                                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                                                        <p>
+                                                            <small>12 Sales Today</small>
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                                <li class="media event">
+                                                    <a class="pull-left border-green profile_thumb">
+                                                        <i class="fa fa-user green"></i>
+                                                    </a>
+                                                    <div class="media-body">
+                                                        <a class="title" href="#">Ms. Mary Jane</a>
+                                                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                                                        <p>
+                                                            <small>12 Sales Today</small>
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                                <li class="media event">
+                                                    <a class="pull-left border-blue profile_thumb">
+                                                        <i class="fa fa-user blue"></i>
+                                                    </a>
+                                                    <div class="media-body">
+                                                        <a class="title" href="#">Ms. Mary Jane</a>
+                                                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                                                        <p>
+                                                            <small>12 Sales Today</small>
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                                <li class="media event">
+                                                    <a class="pull-left border-aero profile_thumb">
+                                                        <i class="fa fa-user aero"></i>
+                                                    </a>
+                                                    <div class="media-body">
+                                                        <a class="title" href="#">Ms. Mary Jane</a>
+                                                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                                                        <p>
+                                                            <small>12 Sales Today</small>
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                                <li class="media event">
+                                                    <a class="pull-left border-green profile_thumb">
+                                                        <i class="fa fa-user green"></i>
+                                                    </a>
+                                                    <div class="media-body">
+                                                        <a class="title" href="#">Ms. Mary Jane</a>
+                                                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                                                        <p>
+                                                            <small>12 Sales Today</small>
+                                                        </p>
+                                                    </div>
+                                                </li>*@
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="clearfix"></div>
+
+                <div class="row">
+                    <div class="col-md-4 col-sm-4 col-xs-12">
+                        <div class="x_panel tile fixed_height_390">
+                            <div class="x_title">
+                                <h2>Inbound Summary <small>Weekly progress</small></h2>
+                                <ul class="nav navbar-right panel_toolbox">
+                                    <li>
+                                        <a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                                    </li>
+                                    <li class="dropdown">
+                                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                                        <ul class="dropdown-menu" role="menu">
+                                            <li>
+                                                <a href="#">Settings 1</a>
+                                            </li>
+                                            <li>
+                                                <a href="#">Settings 2</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <a class="close-link"><i class="fa fa-close"></i></a>
+                                    </li>
+                                </ul>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+
+                                <div class="x_content">
+                                    <iframe class="chartjs-hidden-iframe" style="width: 100%; display: block; border: 0px; height: 0px; margin: 0px; position: absolute; left: 0px; right: 0px; top: 0px; bottom: 0px;"></iframe>
+                                    <canvas id="mybarChart" height="230" width="461" style="width: 369px; height: 184px;"></canvas>
+                                    <div class="col-xs-12 bg-white progress_summary">
+                                        <div class="row">
+                                            <div class="widget_summary">
+                                                <div class="w_left w_25 padding-top-10">
+                                                    <span>Today Received</span>
+                                                </div>
+                                                <div class="w_center w_55">
+                                                    <div class="progress">
+                                                        <div class="input-group">
+                                                            <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: @Model.TodayReceivedPercent;">
+                                                                <span>1</span>
+                                                            </div>
+                                                            <span class="input-group-addon">@Model.TodayExpected.ToString("##,###")</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="w_right w_20">
+                                                    <span>@Model.TodayReceived.ToString("##,###")</span>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-4 col-xs-12">
+                        <div class="x_panel tile fixed_height_390">
+                            <div class="x_title">
+                                <h2>Space Utilization - Bin Locations</h2>
+                                <ul class="nav navbar-right panel_toolbox">
+                                    <li>
+                                        <a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                                    </li>
+                                    <li class="dropdown">
+                                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                                        <ul class="dropdown-menu" role="menu">
+                                            <li>
+                                                <a href="#">Settings 1</a>
+                                            </li>
+                                            <li>
+                                                <a href="#">Settings 2</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <a class="close-link"><i class="fa fa-close"></i></a>
+                                    </li>
+                                </ul>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+                                @foreach (var spItem in Model.LocationUtilization)
+                                {
+                                <div class="widget_summary">
+                                    <div class="w_left w_25 padding-top-5">
+                                        <span>WHSE-@spItem.Loc</span>
+                                    </div>
+                                    <div class="w_center w_55">
+                                        <div class="progress">
+                                            @*<div class="progress-bar bg-green" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" style="width: @spItem.BinUsagePercent;">
+                                                    <span class="sr-only">20% Complete</span>
+                                                </div>*@
+                                            <div class="input-group">
+                                                <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" style="width: @spItem.BinUsagePercent;">
+                                                    <span>@spItem.BinUsagePercent</span>
+                                                </div>
+                                                <span class="input-group-addon">@spItem.TotalBin.ToString("##,###")</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="w_right w_20">
+                                        <span>@spItem.BinUsage.ToString("##,###")</span>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </div>
+                                }
+                                <div class="row top_tiles" style="margin: 2px 0;">
+                                    <div class="col-md-4 col-sm-4 col-xs-6 tile">
+                                        <span>Total Bin</span>
+                                        <h3>@Model.TotalBin.ToString("##,###")</h3>
+                                    </div>
+                                    <div class="col-md-4 col-sm-4 col-xs-6 tile">
+                                        <span>Total Usage</span>
+                                        <h3>@Model.BinUsage.ToString("##,###")</h3>
+                                    </div>
+                                    <div class="col-md-4 col-sm-4 col-xs-6 tile">
+                                        <span>Available <span class="badge bg-color-greenLight">@Model.AvaliableBinPercent %</span></span>
+                                        <h3>@Model.AvaliableBin.ToString("##,###")</h3>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-4 col-xs-12">
+                        <div class="x_panel tile fixed_height_390">
+                            <div class="x_title">
+                                <h2>Space Utilization - Quantity</h2>
+                                <ul class="nav navbar-right panel_toolbox">
+                                    <li>
+                                        <a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                                    </li>
+                                    <li class="dropdown">
+                                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                                        <ul class="dropdown-menu" role="menu">
+                                            <li>
+                                                <a href="#">Settings 1</a>
+                                            </li>
+                                            <li>
+                                                <a href="#">Settings 2</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <a class="close-link"><i class="fa fa-close"></i></a>
+                                    </li>
+                                </ul>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Location</th>
+                                            <th>Quantity</th>
+                                            <th>Bin Usage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var binQty in Model.LocationUtilization)
+                                        {
+                                            <tr>
+                                                <th scope="row">@binQty.RowIndex</th>
+                                                <td>@binQty.Loc</td>
+                                                <td>@binQty.QtyBoh.ToString("##,###")</td>
+                                                <td>@binQty.BinUsage.ToString("##,###")</td>
+                                            </tr>
+                                        }
+                                        @*<tr>
+                                            <th scope="row">1</th>
+                                            <td>Mark</td>
+                                            <td>Otto</td>
+                                            <td>1</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">2</th>
+                                            <td>Jacob</td>
+                                            <td>Thornton</td>
+                                            <td>1</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">3</th>
+                                            <td>Larry</td>
+                                            <td>the Bird</td>
+                                            <td>1</td>
+                                        </tr>*@
+                                    </tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /page content -->
+        </div>
+    </div>
+
+    <script type="text/javascript">
+
+    $(document).ready(function () {
+        (function () {
+            setInterval(function () {
+                //init_receipt_perform_chart();
+                //init_orders_weekly_chart();
+                init_orders_perform_chart();
+            }, 60000);
+        })();
+
+        $('#config-text').keyup(function () {
+            eval($(this).val());
+        });
+
+        $('.configurator input, .configurator select').change(function () {
+            updateConfig();
+        });
+
+        $('.demo i').click(function () {
+            $(this).parent().find('input').click();
+        });
+
+        $('#startDate').daterangepicker({
+            singleDatePicker: true,
+            startDate: moment().subtract(6, 'days')
+        });
+
+        $('#endDate').daterangepicker({
+            singleDatePicker: true,
+            startDate: moment()
+        });
+
+        updateConfig();
+
+        function updateConfig() {
+            var options = {};
+
+            if ($('#singleDatePicker').is(':checked'))
+                options.singleDatePicker = true;
+
+            if ($('#showDropdowns').is(':checked'))
+                options.showDropdowns = true;
+
+            if ($('#showWeekNumbers').is(':checked'))
+                options.showWeekNumbers = true;
+
+            if ($('#showISOWeekNumbers').is(':checked'))
+                options.showISOWeekNumbers = true;
+
+            if ($('#timePicker').is(':checked'))
+                options.timePicker = true;
+
+            if ($('#timePicker24Hour').is(':checked'))
+                options.timePicker24Hour = true;
+
+            //if ($('#timePickerIncrement').val().length && $('#timePickerIncrement').val() != 1)
+            //    options.timePickerIncrement = parseInt($('#timePickerIncrement').val(), 10);
+
+            options.timePickerIncrement = 1;
+
+            if ($('#timePickerSeconds').is(':checked'))
+                options.timePickerSeconds = true;
+
+            if ($('#autoApply').is(':checked'))
+                options.autoApply = true;
+
+            if ($('#dateLimit').is(':checked'))
+                options.dateLimit = { days: 7 };
+
+            if ($('#ranges').is(':checked')) {
+                options.ranges = {
+                    'Today': [moment(), moment()],
+                    'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                    'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                    'This Month': [moment().startOf('month'), moment().endOf('month')],
+                    'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                };
+            }
+
+            if ($('#locale').is(':checked')) {
+                $('#rtl-wrap').show();
+                options.locale = {
+                    direction: $('#rtl').is(':checked') ? 'rtl' : 'ltr',
+                    format: 'MM/DD/YYYY HH:mm',
+                    separator: ' - ',
+                    applyLabel: 'Apply',
+                    cancelLabel: 'Cancel',
+                    fromLabel: 'From',
+                    toLabel: 'To',
+                    customRangeLabel: 'Custom',
+                    daysOfWeek: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+                    monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                    firstDay: 1
+                };
+            } else {
+                $('#rtl-wrap').hide();
+            }
+
+            if (!$('#linkedCalendars').is(':checked'))
+                options.linkedCalendars = false;
+
+            if (!$('#autoUpdateInput').is(':checked'))
+                options.autoUpdateInput = false;
+
+            if (!$('#showCustomRangeLabel').is(':checked'))
+                options.showCustomRangeLabel = false;
+
+            if ($('#alwaysShowCalendars').is(':checked'))
+                options.alwaysShowCalendars = true;
+        }
+
+        function init_gauge() {
+
+            if (typeof (Gauge) === 'undefined') { return; }
+
+            console.log('init_gauge [' + $('.gauge-chart').length + ']');
+
+            console.log('init_gauge');
+
+
+            var chart_gauge_settings = {
+                lines: 12,
+                angle: 0,
+                lineWidth: 0.4,
+                pointer: {
+                    length: 0.75,
+                    strokeWidth: 0.042,
+                    color: '#1D212A'
+                },
+                limitMax: 'false',
+                colorStart: '#1ABC9C',
+                colorStop: '#1ABC9C',
+                strokeColor: '#F0F3F3',
+                generateGradient: true
+            };
+
+
+            if ($('#chart_gauge_01').length) {
+
+                var chart_gauge_01_elem = document.getElementById('chart_gauge_01');
+                var chart_gauge_01 = new Gauge(chart_gauge_01_elem).setOptions(chart_gauge_settings);
+
+            }
+
+
+            if ($('#gauge-text').length) {
+
+                chart_gauge_01.maxValue = 100;
+                chart_gauge_01.animationSpeed = 32;
+                chart_gauge_01.set(37);
+                chart_gauge_01.setTextField(document.getElementById("gauge-text"));
+
+            }
+
+            if ($('#chart_gauge_02').length) {
+
+                var chart_gauge_02_elem = document.getElementById('chart_gauge_02');
+                var chart_gauge_02 = new Gauge(chart_gauge_02_elem).setOptions(chart_gauge_settings);
+
+            }
+
+
+            if ($('#gauge-text2').length) {
+
+                chart_gauge_02.maxValue = 9000;
+                chart_gauge_02.animationSpeed = 32;
+                chart_gauge_02.set(2400);
+                chart_gauge_02.setTextField(document.getElementById("gauge-text2"));
+
+            }
+
+
+        }
+
+        function init_chart_doughnut() {
+
+            if (typeof (Chart) === 'undefined') { return; }
+
+            console.log('init_chart_doughnut');
+
+            if ($('.canvasDoughnut').length) {
+                var bohData = [];
+                var locText = [];
+                var locLabel = [];
+                var locUtilization = @Html.Raw(Json.Encode(Model.LocationUtilization));
+                var len = locUtilization.length;
+                var bohDoughnutData = [];
+                for (var i = 0; i < len; i++) {
+                    bohData.push(locUtilization[i].QtyBoh);
+                    locText.push(locUtilization[i].Loc);
+                    locLabel.push(getRandomColor());
+                }
+
+                var bohChartData =
+                {
+                    labels: locText,
+                    datasets: [{
+                        label: 'ProductWise Sales Count',
+                        backgroundColor: locLabel,
+                        borderWidth: 2,
+                        data: bohData
+                    }]
+                };
+                var ctxboh = document.getElementById("canvasDoughnutChart").getContext("2d");
+                var bohChart = new Chart(ctxboh,
+                   {
+                       type: 'doughnut',
+                       data: bohChartData,
+                       options:
+                           {
+                               title:
+                               {
+                                   display: true,
+                                   text: "ProductWise Sales Count"
+                               },
+                               responsive: true,
+                               maintainAspectRatio: true
+                           }
+                   });
+            }
+
+        }
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF'.split('');
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        function init_orders_perform_chart() {
+            debugger
+            $.ajax({
+                type: "GET",
+                url: '@Url.Action("GetOrdersDashboard", "Orders")',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (data) {
+                    var chart_weekly_plot_data = [];
+                    for (var i = 0; i < data.OrdersWeekly.length; i++) {
+                        var ordDate = moment(data.OrdersWeekly[i].OrderDate)._d;
+                        chart_weekly_plot_data.push([ordDate, data.OrdersWeekly[i].TotalOrders]);
+                    }
+
+                    var orders_weekly_flot_setting = {
+                        grid: {
+                            show: true,
+                            aboveData: true,
+                            color: "#3f3f3f",
+                            labelMargin: 10,
+                            axisMargin: 0,
+                            borderWidth: 0,
+                            borderColor: null,
+                            minBorderMargin: 5,
+                            clickable: true,
+                            hoverable: true,
+                            autoHighlight: true,
+                            mouseActiveRadius: 100
+                        },
+                        series: {
+                            lines: {
+                                show: true,
+                                fill: true,
+                                lineWidth: 2,
+                                steps: false
+                            },
+                            points: {
+                                show: true,
+                                radius: 4.5,
+                                symbol: "circle",
+                                lineWidth: 3.0
+                            }
+                        },
+                        legend: {
+                            position: "ne",
+                            margin: [0, -25],
+                            noColumns: 0,
+                            labelBoxBorderColor: null,
+                            labelFormatter: function (label, series) {
+                                return label + '&nbsp;&nbsp;';
+                            },
+                            width: 40,
+                            height: 1
+                        },
+                        colors: ['#96CA59', '#3F97EB', '#72c380', '#6f7a8a', '#f7cb38', '#5a8022', '#2c7282'],
+                        shadowSize: 0,
+                        tooltip: true,
+                        tooltipOpts: {
+                            content: "%s: %y.0",
+                            xDateFormat: "%d/%m",
+                            shifts: {
+                                x: -30,
+                                y: -50
+                            },
+                            defaultTheme: false
+                        },
+                        yaxis: {
+                            min: 0
+                        },
+                        xaxis: {
+                            mode: "time",
+                            minTickSize: [1, "day"],
+                            timeformat: "%d/%m/%y",
+                            min: chart_weekly_plot_data[0][0],
+                            max: chart_weekly_plot_data[7][0]
+                        }
+                    };
+
+                    if ($("#orders_weekly_plot_chart").length) {
+                        console.log('Plot2');
+
+                        $.plot($("#orders_weekly_plot_chart"),
+                        [{
+                            label: "Open Qty",
+                            data: chart_weekly_plot_data,
+                            lines: {
+                                fillColor: "rgba(150, 202, 89, 0.12)"
+                            },
+                            points: {
+                                fillColor: "#fff"
+                            }
+                        }], orders_weekly_flot_setting);
+
+                    }
+                    $("#openQty").text(data.OpenQty.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    document.getElementById("openRecord").innerHTML = data.OpenRecord.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " Orders";
+                    $("#allocatedQty").text(data.AllocatedQty.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    document.getElementById("allocatedQtyPercent").innerHTML = Math.round(((data.AllocatedQty / data.OpenQty) * 100)) + "% Allocated";
+                    $("#pickedQty").text(data.PickedQty.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    document.getElementById("pickedQtyPercent").innerHTML = Math.round(((data.PickedQty / data.AllocatedQty) * 100)) + "% Picked";
+                    $("#pickedOutstandingQty").text((data.AllocatedQty - data.PickedQty).toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    document.getElementById("pickedOutstandingPercent").innerHTML = Math.round(((data.AllocatedQty - data.PickedQty) / data.AllocatedQty) * 100, 0) + "% Outstanding Picking";
+                    document.getElementById("totalOrders").innerHTML = data.TotalExternOrderKey.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    document.getElementById("totalOpenQty").innerHTML = data.OriginalQty.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    document.getElementById("totalShippedQty").innerHTML = data.ShippedQty.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    $("#samedayOrder").text(data.SameDayOrder.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    $("#urgentOrder").text(data.UrgentOrder.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    $("#compUrgentOrder").text(data.CompleteUrgent.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    $("#waitingForShip").text(data.WaitingForShippedQty.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+                    
+                    var sparkline_tot_orders_data = [];
+                    for (var i = 0; i < data.OrdersWeekly.length; i++) {
+                        sparkline_tot_orders_data.push(data.OrdersWeekly[i].TotalExternOrderKey);
+                    }
+                    var sparkline_tot_orderQty_data = [];
+                    for (var i = 0; i < data.OrdersWeekly.length; i++) {
+                        sparkline_tot_orderQty_data.push(data.OrdersWeekly[i].TotalOrders);
+                    }
+                    var sparkline_tot_shippedQty_data = [];
+                    for (var i = 0; i < data.OrdersWeekly.length; i++) {
+                        sparkline_tot_shippedQty_data.push(data.OrdersWeekly[i].ShippedQty);
+                    }
+
+                    $('#sparklineTotalOrders').sparkline(sparkline_tot_orders_data,  {
+                        type: 'bar',
+                        height: '40',
+                        barWidth: 20,
+                        colorMap: {
+                            '7': '#a1a1a1'
+                        },
+                        barSpacing: 3,
+                        barColor: '#26B99A'
+                    });
+
+                    $("#sparklineTotalOpenQty").sparkline(sparkline_tot_orderQty_data, {
+                        type: 'line',
+                        height: '40',
+                        width: '200',
+                        lineColor: '#26B99A',
+                        fillColor: '#ffffff',
+                        lineWidth: 3,
+                        spotColor: '#34495E',
+                        minSpotColor: '#34495E'
+                    });
+                    $('#sparklineTotalShippedQty').sparkline(sparkline_tot_shippedQty_data, {
+                        type: 'bar',
+                        height: '40',
+                        barWidth: 20,
+                        colorMap: {
+                            '7': '#a1a1a1'
+                        },
+                        barSpacing: 3,
+                        barColor: '#26B99A'
+                    });
+
+
+                }
+            });
+        }
+        function init_receipt_perform_chart() {
+
+            $.ajax({
+                type: "GET",
+                url: '@Url.Action("NewChart", "Home")',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (chData) {
+                    var aData = chData;
+                    var aLabels = aData[0];
+                    var aDatasets1 = aData[1];
+                    var dataT = {
+                        labels: aLabels,
+                        datasets: [{
+                            label: "Test Data",
+                            data: aDatasets1,
+                            fill: false,
+                            backgroundColor: ["rgba(54, 162, 235, 0.2)", "rgba(255, 99, 132, 0.2)", "rgba(255, 159, 64, 0.2)", "rgba(255, 205, 86, 0.2)", "rgba(75, 192, 192, 0.2)", "rgba(153, 102, 255, 0.2)", "rgba(201, 203, 207, 0.2)"],
+                            borderColor: ["rgb(54, 162, 235)", "rgb(255, 99, 132)", "rgb(255, 159, 64)", "rgb(255, 205, 86)", "rgb(75, 192, 192)", "rgb(153, 102, 255)", "rgb(201, 203, 207)"],
+                            borderWidth: 1
+                        }]
+                    };
+                    
+                }
+            });
+        }
+
+        function init_orders_weekly_chart() {
+            $.ajax({
+                type: "GET",
+                url: '@Url.Action("OrderWeeklyChart", "Home")',
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (chData) {
+                        var chart_plot_02_data = [];
+                        for (var i = 0; i < chData.length; i++) {
+                            var ordDate = moment(chData[i].OrderDate)._d;
+                            chart_plot_02_data.push([ordDate, chData[i].TotalOrders]);
+                        }
+                       
+                        var orders_weekly_flot_setting = {
+                            grid: {
+                                show: true,
+                                aboveData: true,
+                                color: "#3f3f3f",
+                                labelMargin: 10,
+                                axisMargin: 0,
+                                borderWidth: 0,
+                                borderColor: null,
+                                minBorderMargin: 5,
+                                clickable: true,
+                                hoverable: true,
+                                autoHighlight: true,
+                                mouseActiveRadius: 100
+                            },
+                            series: {
+                                lines: {
+                                    show: true,
+                                    fill: true,
+                                    lineWidth: 2,
+                                    steps: false
+                                },
+                                points: {
+                                    show: true,
+                                    radius: 4.5,
+                                    symbol: "circle",
+                                    lineWidth: 3.0
+                                }
+                            },
+                            legend: {
+                                position: "ne",
+                                margin: [0, -25],
+                                noColumns: 0,
+                                labelBoxBorderColor: null,
+                                labelFormatter: function (label, series) {
+                                    return label + '&nbsp;&nbsp;';
+                                },
+                                width: 40,
+                                height: 1
+                            },
+                            colors: ['#96CA59', '#3F97EB', '#72c380', '#6f7a8a', '#f7cb38', '#5a8022', '#2c7282'],
+                            shadowSize: 0,
+                            tooltip: true,
+                            tooltipOpts: {
+                                content: "%s: %y.0",
+                                xDateFormat: "%d/%m",
+                                shifts: {
+                                    x: -30,
+                                    y: -50
+                                },
+                                defaultTheme: false
+                            },
+                            yaxis: {
+                                min: 0
+                            },
+                            xaxis: {
+                                mode: "time",
+                                minTickSize: [1, "day"],
+                                timeformat: "%d/%m/%y",
+                                min: chart_plot_02_data[0][0],
+                                max: chart_plot_02_data[28][0]
+                            }
+                        };
+
+                        if ($("#orders_weekly_plot_chart").length) {
+                            console.log('Plot2');
+
+                            $.plot($("#orders_weekly_plot_chart"),
+                            [{
+                                label: "Open Qty",
+                                data: chart_plot_02_data,
+                                lines: {
+                                    fillColor: "rgba(150, 202, 89, 0.12)"
+                                },
+                                points: {
+                                    fillColor: "#fff"
+                                }
+                            }], orders_weekly_flot_setting);
+
+                        }
+                    }
+                });
+            }
+            function init_receipt_bar_chart(){
+                if ($('#mybarChart').length) {
+                    var onDateData = [];
+                    var expData = [];
+                    var recvData = [];
+                    var ctx = document.getElementById("mybarChart");
+
+                    var recv = @Html.Raw(Json.Encode(Model.ReceiptPerfomance));
+                    var len = recv.length;
+                   
+                    for (var i = 0; i < len; i++) {
+                        onDateData.push(recv[i].OnDate);
+                        expData.push(recv[i].QtyExpected);
+                        recvData.push(recv[i].QtyReceived);
+                    }
+                    var mybarChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: onDateData,
+                            datasets: [{
+                                label: '# of Expected',
+                                backgroundColor: "#26B99A",
+                                data: expData
+                            }, {
+                                label: '# of Received',
+                                backgroundColor: "#03586A",
+                                data: recvData
+                            }]
+                        },
+
+                        options: {
+                            scales: {
+                                yAxes: [{
+                                    ticks: {
+                                        beginAtZero: true
+                                    }
+                                }]
+                            }
+                        }
+                    });
+                }
+            }
+            init_orders_perform_chart();
+            init_receipt_perform_chart();
+            //init_gauge();
+            init_receipt_bar_chart();
+
+        });
+    </script>
+
+    <script src="~/Scripts/dashboard/ordersDashboard.js"></script>
+</div>
+<!-- END MAIN CONTENT -->

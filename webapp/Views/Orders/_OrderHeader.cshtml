@@ -1,0 +1,260 @@
+﻿@model OrdersViewModel
+@{
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+<style>
+    .dropdown-header {
+        font-size: 1.0em;
+        padding: 0;
+        text-transform: uppercase;
+    }
+
+    .dropdown-header > span {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+        text-align: left;
+        display: inline-block;
+        border-style: solid;
+        border-width: 0 0 1px 1px;
+        padding: 5px;
+        width: 74%;
+    }
+
+    .dropdown-header > span:first-child {
+        width: 100px;
+        border-left-width: 0;
+    }
+
+    #ConsigneeKey-list {
+        width: 400px !important;
+    }
+
+    #StorerKey-list {
+        width: 400px !important;
+    }
+</style>
+
+<script language="javascript" type="text/javascript">
+
+    function filterStorerInfo() {
+        var combobox = $("#StorerKey").data("kendoComboBox");
+        return {
+            companyName: combobox.text(),
+            userId: '@currentUser.UserName'
+        };
+    }
+    function checkStorerName(storerName) {
+        if (typeof storerName != "undefined") {
+            if (storerName.length > 25)
+                return storerName.substring(0, 25) + "..";
+            else
+                return storerName;
+        }
+    }
+    function filterConsigneeInfo() {
+        var combobox = $("#ConsigneeKey").data("kendoComboBox");
+        return {
+            companyName: combobox.text()
+        };
+    }
+    function checkConsigneeName(consigneeName) {
+        if (typeof consigneeName != "undefined") {
+            if (consigneeName.length > 25)
+                return consigneeName.substring(0, 25) + "..";
+            else
+                return consigneeName;
+        }
+    }
+    ConsigneeKey_Change = function (e) {
+        var consignee = this.dataItem(this.select());
+        if (typeof consignee != "undefined") {
+            $('#C_Company').val(consignee.Company).change();
+            $('#C_Contact1').val(consignee.Contact1).change();
+            $('#C_Email1').val(consignee.Email1).change();
+            $('#C_Address1').val(consignee.Address1).change();
+            $("#C_Address2").val(consignee.Address2).change();
+            $("#C_Address3").val(consignee.Address3).change();
+            $("#C_Address4").val(consignee.Address4).change();
+        }
+    }
+
+</script>
+
+<div class="row" id="orderHeader">
+   
+    <div class="col-sm-12">
+        <div class="col-sm-12">
+            @Html.HiddenFor(m => m.OrderKey)
+            @Html.HiddenFor(m => m.Flag3)
+            @Html.HiddenFor(m => m.ShipToKey)
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="col-sm-12 padding-top-5">
+                <h4 class="header-caption padding-left-10">
+                   <span id="orderCaption">Order Number :</span>
+                </h4>
+            </div>
+        </div>
+    </div>
+    <hr class="faded-modi" />
+    <div class="col-sm-12">
+        <div class="col-sm-3">
+            <div class="form-group">
+                <label for="productID">StorerKey :</label>
+                @(Html.Kendo().ComboBoxFor(m => m.StorerKey)
+                    .DataValueField("StorerKey")
+                    .DataTextField("Company")
+                    .HtmlAttributes(new { @style = "width: 100%" })
+                    .HeaderTemplate("<div class=\"dropdown-header\">" +
+                        "<span>Code</span>" +
+                        "<span>Name</span>" +
+                    "</div'>")
+                    .Template("<table><tr><td width='100px'>${ StorerKey }</td><td width='200px'>${ Company }</td></tr></table>")
+                    .Filter(FilterType.Contains)
+                    .AutoBind(false)
+                    .MinLength(3)
+                    .DataSource(source =>
+                    {
+                        source.Read(read =>
+                        {
+                            read.Action("GetStorerInfo", "Orders")
+                                    .Data("filterStorerInfo");
+                        })
+                        .ServerFiltering(true);
+                    })
+                )
+                @Html.ValidationMessageFor(m => m.StorerKey, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                <label for="externorderKey">Extern OrderKey :</label>
+                @Html.TextBoxFor(m => m.ExternOrderKey, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+                @Html.ValidationMessageFor(m => m.ExternOrderKey,"", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                <label for="deliverydate">Buyer PO :</label>
+                @Html.TextBoxFor(m => m.BuyerPO, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+                @Html.ValidationMessageFor(m => m.BuyerPO)
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="form-group">
+                <label for="orderdate">Order Date :</label>
+                @(Html.Kendo().DatePickerFor(m => m.OrderDate).HtmlAttributes(new { type="text",@style = "width: 100%;max-width:100%" }).Culture("en-AU"))
+                @Html.ValidationMessageFor(m => m.OrderDate, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                <label for="intermodalvehicle">Vehicle No :</label>
+                @Html.TextBoxFor(m => m.IntermodalVehicle, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+            </div>
+            <div class="form-group">
+                <label for="deliveryplace">Delivery Place :</label>
+                @Html.TextBoxFor(m => m.DeliveryPalce, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="form-group">
+                <div class="form-group">
+                    <label for="deliverydate">Delivery Date :</label>
+                    @(Html.Kendo().DatePickerFor(m => m.DeliveryDate).HtmlAttributes(new { type="text",@style = "width: 100%;max-width:100%" }))
+                    @Html.ValidationMessageFor(m => m.DeliveryDate, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="shippinginstructions1">Shipping Instructions :</label>
+                @Html.TextAreaFor(m => m.ShippingInstructions1, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;", @rows = 5 })
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<hr class="faded" />
+<div class="row" id="consigneeKeyInfo">
+    <div class="col-sm-12">
+        <div class="col-sm-12">
+            <h4><span class="glyphicon glyphicon-user"></span>&nbsp;Consignee Information</h4>
+        </div>
+    </div>
+    <div class="col-sm-12">
+        <div class="col-sm-3">
+            <div class="form-group">
+                <label for="customerName">Name :</label>
+                @Html.HiddenFor(m => m.C_Company)
+                @(Html.Kendo().ComboBoxFor(m => m.ConsigneeKey)
+                    .DataValueField("StorerKey")
+                    .DataTextField("Company")
+                    .Filter(FilterType.Contains)
+                    .HtmlAttributes(new { @style = "width: 100%" })
+                    .HeaderTemplate("<div class=\"dropdown-header\">" +
+                        "<span>Code</span>" +
+                        "<span>Name</span>" +
+                    "</div'>")
+                    .Template("<table><tr><td width='100px'>${ StorerKey }</td><td width='200px'>${ Company }</td></tr></table>")
+                    .MinLength(3)
+                    .Events(events => events.Close("ConsigneeKey_Change"))
+                    .AutoBind(false)
+                    .DataSource(source =>
+                    {
+                        source.Read(read =>
+                        {
+                            read.Action("GetConsigneeInfo", "Orders")
+                                    .Data("filterConsigneeInfo");
+                        })
+                        .ServerFiltering(true);
+                    })
+                )
+                @Html.ValidationMessageFor(m => m.ConsigneeKey)
+            </div>
+            <div class="form-group">
+                <label for="contactPersonName">Contact Person Name :</label>
+                @Html.TextBoxFor(m => m.C_contact1, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+            </div>
+            <div class="form-group">
+                <label for="customerEmailId">Customer Email Id :</label>
+                @Html.TextBoxFor(m => m.C_Email1, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;" })
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="form-group  padding-bottom-5">
+                <label for="customerAddress">Address:</label>
+                @Html.TextBoxFor(m => m.C_Address1, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;" })
+            </div>
+            <div class="form-group padding-bottom-5">
+                @Html.TextBoxFor(m => m.C_Address2, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;" })
+            </div>
+            <div class="form-group  padding-bottom-5">
+                @Html.TextBoxFor(m => m.C_Address3, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;" })
+            </div>
+            <div class="form-group">
+                @Html.TextBoxFor(m => m.C_Address4, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;" })
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="form-group">
+                <label for="notes">Note :</label>
+                @Html.TextAreaFor(m => m.Notes, new { @class = "k-textbox", @style = "width: 100%; max-width: 100%;", @rows = 9 })
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script language="javascript" type="text/javascript">
+    $(window).load(function () {
+        var comboStorer = $("#StorerKey").data("kendoComboBox");
+        if ('@Model.StorerKey' != "") {
+            comboStorer.dataSource.add({ Company: '@Model.StorerName', StorerKey: '@Model.StorerKey' });
+            comboStorer.value('@Model.StorerKey');
+        }
+        var comboConsignee = $("#ConsigneeKey").data("kendoComboBox");
+        if ('@Model.ConsigneeKey' != "") {
+            comboConsignee.dataSource.add({ Company: '@Model.C_Company', StorerKey: '@Model.ConsigneeKey' });
+            comboConsignee.value('@Model.ConsigneeKey');
+        }
+        $("#orderCaption").text("Order Number : " + '@Model.OrderKey' + ' - ' + '@Model.C_Company');
+    });
+  
+</script>

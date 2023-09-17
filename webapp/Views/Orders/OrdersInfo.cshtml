@@ -1,0 +1,316 @@
+﻿@model OrdersViewModel
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<div id="content">
+
+    <style>
+        .k-grid td {
+            border-width: 0;
+        }
+        .form-horizontal .control-label {
+            text-align: left !important;
+            height: 25px;
+            padding-left: 0px;
+        }
+        .form-group {
+            margin-bottom: 1px;
+        }
+
+        .panel-title > a:before {
+            content: ' ';
+            display: inline-block;
+            width: 9px;
+            height: 12px;
+            background: url('/Images/ImageSprite.png?v=635823572987228747') no-repeat scroll -470px -3px;
+        }
+
+        .panel-title > a.collapsed:before {
+            content: ' ';
+            display: inline-block;
+            width: 9px;
+            height: 12px;
+            background: url('/Images/ImageSprite.png?v=635823572987228747') no-repeat scroll -486px -3px;
+        }
+
+        .panel-title > a:hover,
+        .panel-title > a:active,
+        .panel-title > a:focus {
+            text-decoration: none;
+        }
+        a.header-caption:link {
+            color: darkgreen;
+        }
+    </style>
+
+    <div class="panel-group  margin-bottom-0" id="accordion" role="tablist" aria-multiselectable="true">
+        <div class="panel panel-default">
+            <div class="panel-heading  padding-bottom-5 padding-top-5" role="tab" id="headingOne">
+                <h4 class="panel-title">
+                    <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="true" aria-controls="collapseOne" class="header-caption">
+                        Order Number : @Model.OrderKey - @Model.C_Company
+                    </a>
+                </h4>
+
+            </div>
+            <div id="collapseOne" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingOne">
+                <div class="panel-body  padding-top-5 padding-bottom-5">
+                    <div class="form-horizontal">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Seller</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.StorerName</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Order Date</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.OrderDate.Value.ToString("dd/MM/yyyy HH:mm")</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Delivery Date</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.DeliveryDate.Value.ToString("dd/MM/yyyy HH:mm")</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Order Group</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.OrderGroup</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Customer Ref#</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.ExternOrderKey</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Export Entry#</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.ShippingInstructions1</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Delivery To</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.C_Company</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"><strong>Address</strong></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.C_Address1</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.C_Address2</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.C_Address3</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-md-3 control-label"></label>
+                                <div class="col-md-9 control-label">
+                                    <label>@Model.C_Address4 @Model.C_City</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+
+            @(Html.Kendo().Grid<OrdersListViewModel>()
+            .Name("orderDetailGrid")
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                //columns.Bound(o => o.OrderKey).Width(80);
+                columns.Bound(o => o.OrderLineNumber).Width(55);
+                columns.Bound(o => o.Sku).Width(200);
+                columns.Bound(o => o.SkuDescription).Width(200);
+                columns.Bound(o => o.PackKey).Width(35);
+                columns.Bound(o => o.UOM).Width(35);
+                columns.Bound(o => o.ShippedQty).Width(60).HtmlAttributes(new { style = "text-align: right" }).ClientFooterTemplate("<div style='text-align:right'>#=sum#</div>");
+                columns.Bound(o => o.OpenQty).Width(60).HtmlAttributes(new { style = "text-align: right" }).ClientFooterTemplate("<div style='text-align:right'>#=sum#</div>");
+                columns.Bound(o => o.QtyAllocated).Width(60).HtmlAttributes(new { style = "text-align: right" }).ClientFooterTemplate("<div style='text-align:right'>#=sum#</div>");
+                columns.Bound(o => o.QtyPicked).Width(60).HtmlAttributes(new { style = "text-align: right" }).ClientFooterTemplate("<div style='text-align:right'>#=sum#</div>");
+                columns.Bound(o => o.UnitPrice).Width(60);
+                columns.Bound(o => o.NetWeight).Width(60);
+                columns.Bound(o => o.GrossWeight).Width(60);
+                //columns.Bound(o => o.AddedDate).ClientTemplate("#= ConvertDateTimeFormat(AddedDate) #").Width(130);
+                //columns.Bound(o => o.EditDate).ClientTemplate("#= ConvertDateTimeFormat(EditDate) #").Width(130);
+            })
+            .Events(events => events.Change("orderDetailGrid_OnChange"))
+            .Pageable()
+            .Selectable()
+            .Sortable()
+            .Scrollable()
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .Aggregates(aggregates =>
+            {
+                aggregates.Add(p => p.OpenQty).Sum();
+                aggregates.Add(p => p.ShippedQty).Sum();
+                aggregates.Add(p => p.QtyAllocated).Sum();
+                aggregates.Add(p => p.QtyPicked).Sum();
+            })
+            .Events(events => events.Error("orderDetailGrid_onError"))
+            .PageSize(50)
+            .Model(model => model.Id(p => p.OrderKey))
+            .Read(read => read.Action("GetOrderDetail", "Orders").Data("additionalInfo"))
+            .ServerOperation(false)
+            )
+            )
+
+        </div>
+    </div>
+
+    <div class="row padding-top-5">
+        <div class="col-md-3">
+            <h4 class="header-sub-caption">Line : <label id="orderLine">-</label></h4>
+        </div>
+        <div class="col-md-9">
+            <h4 class="header-sub-caption">Sku : <label id="sku">-</label></h4>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+
+            @(Html.Kendo().Grid<PickDetailViewModel>()
+            .Name("pickDetailGrid")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.PickDetailKey).Width(90).Locked();
+                columns.Bound(o => o.Lot).Width(90).Locked();
+                columns.Bound(o => o.Loc).Width(100).Locked();
+                columns.Bound(o => o.ID).Width(150).Locked();
+                //columns.Bound(o => o.Qty).Width(80).Locked();
+                columns.Bound(o => o.UOM).Width(80).Locked();
+                columns.Bound(o => o.Qty).Width(80).HtmlAttributes(new { style = "text-align: right" }).ClientFooterTemplate("<div style='text-align:right'>#=sum#</div>").Locked();
+                columns.Bound(o => o.AddDate).ClientTemplate("#= ConvertDateTimeFormat(AddDate) #").Width(130).Locked();
+                columns.Bound(o => o.EditDate).ClientTemplate("#= ConvertDateTimeFormat(EditDate) #").Width(130);
+            })
+            .Pageable()
+            .Selectable()
+            .Sortable()
+            .Scrollable()
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .Aggregates(aggregates =>
+            {
+                aggregates.Add(p => p.Qty).Sum();
+            })
+            .PageSize(50)
+            .Model(model => model.Id(p => p.PickDetailKey))
+            .Read(read => read.Action("GetPickDetail", "Orders").Data("ordersSelectedInfo"))
+            .ServerOperation(false)
+            )
+            )
+
+        </div>
+    </div>
+
+    <script>
+        function orderDetailGrid_OnChange(e) {
+            $('#pickDetailGrid').data('kendoGrid').dataSource.read();
+        }
+        function additionalInfo() {
+            var orderKey = '@Model.OrderKey';
+            return {
+                orderKey: orderKey
+            }
+        }
+        function orderDetailGrid_onError(e) {
+            debugger
+            if (e.errors) {
+                var message = ""; //"Errors:\n";
+                var status = "";
+                $.each(e.errors, function (key, value) {
+                    status = key;
+                    if ('errors' in value) {
+                        $.each(value.errors, function () {
+                            message += this + "\n";
+                        });
+                    }
+                });
+
+                if (status.indexOf("ex") > -1) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: message,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+            }
+            else {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Error",
+                    message: "[Error Code] " + e.xhr.status + "<br/>" + e.xhr.statusText,
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+            }
+        }
+        function ordersSelectedInfo() {
+          
+            var grid = $("#orderDetailGrid").data("kendoGrid");
+            var item = grid.dataItem(grid.select());
+            $('[id$=orderLine]').empty();
+            $('[id$=orderLine]').text(item.OrderLineNumber);
+            $('[id$=sku]').empty();
+            $('[id$=sku]').text(item.Sku +' - '+ item.SkuDescription);
+            return {
+                orderKey: item.OrderKey,
+                orderLineNumber: item.OrderLineNumber
+            }
+        }
+        function GetPickDetail(orderKey, orderLineNumber) {
+            $.ajax({
+                url: "/Orders/GetPickDetail",
+                type: 'POST',
+                contentType: "application/json;charset=utf-8",
+                data: JSON.stringify({ orderKey: orderKey, orderLineNumber: orderLineNumber }),
+                dataType: "json",
+                success: function (data) {
+                    debugger
+                    var grid = $('#pickDetailGrid').getKendoGrid();
+                    //debugger
+                    //$.each(data, function (i, obj) {
+                    //    if (obj.BirthDate != null) {
+                    //        d = new Date(parseInt(obj.BirthDate.replace("/Date(", "").replace(")/", ""), 10));
+                    //        var convertedDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                    //        obj.BirthDate = convertedDate;
+                    //    }
+                    //});
+                    grid.dataSource.data(data);
+                    grid.dataSource.page(1);
+                    grid.refresh();
+                }
+            });
+
+        }
+    </script>
+
+</div>

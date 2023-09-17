@@ -1,0 +1,248 @@
+﻿@using WMSPortal.ViewModels;
+@model LoadingViewModel
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+<script src="~/Scripts/jquery.validate.min.js"></script>
+<script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+@helper RenderLoadingHeader()
+{
+    @Html.Partial("_LoadingHeader", Model)
+}
+@helper RenderLoadingDetail()
+{
+    @Html.Partial("_LoadingDetail", Model)
+}
+@using (Html.BeginForm(new { id = "frmLoadingManagment" }))
+{
+    @Html.AntiForgeryToken()
+
+    <div id="content">
+
+        <style>
+            #toolbar {
+                border-width: 0 0 1px;
+            }
+
+            .field-validation-valid {
+                display: none;
+            }
+
+            .fixed-ribbon #content {
+                padding-top: 40px;
+            }
+
+            #content {
+                padding: 0px 0px;
+                position: relative;
+            }
+        </style>
+
+        @(Html.Kendo().ToolBar()
+        .Name("loadingToolBar")
+        .Items(items =>
+        {
+            items.Add().Type(CommandType.Button).Text("New").ImageUrl("../Content/img/new.png").Id("btnNewLoading");
+            items.Add().Type(CommandType.Button).Text("Save").ImageUrl("../Content/img/save.png").Id("btnSaveLoading");
+            items.Add().Type(CommandType.Button).Text("Delete").ImageUrl("../Content/img/delete.png").Id("btnDeleteLoading");
+            items.Add().Type(CommandType.Separator);
+            items.Add().Type(CommandType.Button).Text("Post Loading").ImageUrl("../Content/img/finishedwork.png").Id("btnPostLoading");
+
+        })
+        )
+        @RenderLoadingHeader()
+        @RenderLoadingDetail()
+
+        <script type="text/Javascript">
+
+            $(document).ready(function () {
+
+                $(function () {
+                    $("form").kendoValidator();
+                });
+
+                ManageToolbar();
+
+                $("#btnNewLoading").click(function () {
+                    var _this = $(this);
+                    var _form = _this.closest("form");
+                    var validator = _form.kendoValidator().data("kendoValidator");
+                    validator.hideMessages();
+                    ClearLoading();
+                });
+
+                $("#btnDeleteLoading").click(function () {
+                    var toolbar = $("#loadingToolBar").data("kendoToolBar"),
+                      button = $("#btnDeleteLoading"),
+                      isDisabled = button.hasClass("k-state-disabled");
+
+                    if (isDisabled)
+                        return false;
+
+                    toolbar.enable(button, false);
+
+                    $.when(kendo.ui.ExtOkCancelDialog.show({
+                        title: "OK/Cancel",
+                        message: "Do you want to delete this item?",
+                        icon: "k-ext-question"
+                    })
+                     ).done(function (response) {
+                         if (response.button == "OK") {
+
+                             $.ajax({
+                                 url: '@Url.Action("DeleteLoading", "Loading")',
+                                 type: 'post',
+                                 data: { loadingNo: $('#LOADINGNO').val() },
+                                 success: function (data) {
+                                     if (data.isValid == null) {
+                                         ClearLoading();
+                                     }
+                                     else {
+                                         $.when(kendo.ui.ExtAlertDialog.show({
+                                             title: "Error",
+                                             message: data.exceptionErrorMessage,
+                                             icon: "k-ext-error",
+                                             width: 500,
+                                             height: 120
+                                         }))
+                                     }
+                                 },
+                                 complete: function (data) {
+                                     toolbar.enable(button, true);
+                                 },
+                                 error: function (xhr) {
+                                     $.when(kendo.ui.ExtAlertDialog.show({
+                                         title: "Error",
+                                         message: xhr.responseText,
+                                         icon: "k-ext-error",
+                                         width: 500,
+                                         height: 120
+                                     }))
+
+                                 }
+                             });
+                         }
+                         else {
+                             toolbar.enable(button, true);
+                         }
+                     });
+                });
+
+                $("#btnSaveLoading").click(function (e) {
+                    var toolbar = $("#loadingToolBar").data("kendoToolBar"),
+                        button = $("#btnSaveLoading"),
+                        isDisabled = button.hasClass("k-state-disabled");
+
+                    if (isDisabled)
+                        return false;
+
+                    var _this = $(this);
+                    var _form = _this.closest("form");
+                    var validatable = _form.kendoValidator().data("kendoValidator");
+                    if (validatable.validate() === false) {
+                        _form.submit();
+                        return false;
+                    }
+
+                    toolbar.enable(button, false);
+
+                    var model = '@Html.Raw(Json.Encode(Model))';
+                    
+                    $.ajax({
+                        url: '@Url.Action("SaveLoading", "Loading")',
+                        type: 'post',
+                        data: $('form').serialize(),
+                        success: function (data) {
+                            if (data.isValid == null) {
+                                $('#LOADINGNO').val(data.Data[0].LOADINGNO);
+                                $("#loadingCaption").text("Loading No : " + data.Data[0].LOADINGNO);
+                                $.smallBox({
+                                    title: "Success ",
+                                    content: "<i class='fa fa-clock-o'></i> <i> Save Completed</i>",
+                                    color: "#296191",
+                                    iconSmall: "fa-check-circle-o",
+                                    timeout: 4000
+                                });
+                                ManageToolbar();
+                            }
+                            else {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: data.exceptionErrorMessage,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        },
+                        complete: function (data) {
+                            toolbar.enable(button, true);
+                        },
+                        error: function (xhr) {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: xhr.responseText,
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                        }
+                    });
+                });
+            });
+
+            function ClearLoading() {
+                $(":input").each(function () {
+                    var $this = $(this);
+                    if ($this.is("input")) {
+                        $(this).val('');
+                    } else if ($this.is("textarea")) {
+                        $(this).val('');
+                    }
+                });
+                $("#loadingCaption").text("Loading No : ");
+                ManageToolbar();
+            }
+
+            function ManageToolbar() {
+                var loadingNo = $("#LoadingNo").val();
+                
+                var toolbar = $("#loadingToolBar").data("kendoToolBar"),
+                newLoading = $("#btnNewLoading");
+                save = $("#btnSaveLoading");
+                deleteLoading = $("#btnDeleteLoading");
+                postLoading = $("#btnPostLoading");
+
+                toolbar.enable(newLoading, false);
+                toolbar.enable(save, false);
+                toolbar.enable(deleteLoading, false);
+                toolbar.enable(postLoading, false);
+
+                if (loadingNo == "") {
+                    toolbar.enable(newLoading, true);
+                    toolbar.enable(save, true);
+                    toolbar.enable(deleteLoading, false);
+                    toolbar.enable(postLoading, false);
+                    //$("#orderItemsGrid").find(".k-grid-toolbar").hide();
+                }
+                else {
+                    toolbar.enable(newLoading, true);
+                    toolbar.enable(save, true);
+                    toolbar.enable(deleteLoading, true);
+                    toolbar.enable(postLoading, true);
+                }
+            }
+
+        </script>
+
+        <script language="javascript">
+            window.onload = function (e) {
+                ManageToolbar();
+            };
+        </script>
+
+        <div id="window"></div>
+    </div>
+}

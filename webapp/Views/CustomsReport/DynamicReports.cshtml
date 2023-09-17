@@ -1,0 +1,235 @@
+﻿@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<script>
+    var _urlExecuteReport = '@Url.Action("ExecuteReport", "Helper")';
+    var dateFields = [];
+    function OnReportChange(e)
+    {
+        $("#gridResults").removeClass("k-grid k-widget");
+        var item = $('#reports').data("kendoDropDownList");
+        $("#parameterGrid").data("kendoGrid").dataSource.read();
+
+        var outputGrid = $("#gridResults").data("kendoGrid");
+        if (outputGrid)
+        {
+            $("#gridResults").removeData('kendoGrid');
+            $("#gridResults").empty();
+        }
+    }
+
+    function executeReport() {
+        var outputGrid = $("#gridResults").data("kendoGrid");
+        if (outputGrid) {
+            kendo.ui.progress($("#gridResults"), true);
+        }
+        else {
+            $('#load').show();
+        }
+        $('#btnExecuteReport').prop('disabled', true);
+        var grid = $("#parameterGrid").data("kendoGrid");
+        var dataSource = grid.dataSource;
+        var rows = JSON.stringify({ 'parameters': dataSource.data().toJSON() });
+
+        $.ajax({
+            method: "POST",
+            data: rows,
+            url: _urlExecuteReport,
+            contentType: "application/json; charset=utf-8",
+            cache: false,
+            async: true,
+            success: function (data) {
+                generateGrid(data.Data);
+                $('#btnExecuteReport').prop('disabled', false);
+                kendo.ui.progress($("#gridResults"), false);
+                $('#load').hide();
+            },
+            error: function (err) {
+                console.log('Failed to get data' + err);
+                kendo.ui.progress($("#gridResults"), false);
+                $('#load').hide();
+            }
+        });
+    }
+
+    function generateGrid(gridData) {
+
+        var outputGrid = $("#gridResults").data("kendoGrid");
+        if (outputGrid) {
+            $("#gridResults").empty();
+        }
+        var model = generateModel(gridData[0]);
+
+        var parseFunction;
+
+        if (dateFields.length > 0) {
+            parseFunction = function (response) {
+                for (var i = 0; i < response.length; i++) {
+                    for (var fieldIndex = 0; fieldIndex < dateFields.length; fieldIndex++) {
+                        var record = response[i];
+                        record[dateFields[fieldIndex]] = kendo.parseDate(record[dateFields[fieldIndex]]);
+                    }
+                }
+                return response;
+            };
+        }
+
+        var cols = generateColumns(gridData[0]);
+
+        var grid = $("#gridResults").kendoGrid({
+            dataSource: {
+                data: gridData,
+                schema: {
+                    model: model,
+                },
+                pageSize: 200
+            },
+            filterable: true,
+            toolbar: ["excel"],
+            excel: {
+                allPages: true
+            },
+            filterable: {
+                    mode: "row"
+                },
+            pageable: true,
+            columns: cols,
+            noRecords: true,
+            editable: false,
+            scrollable: true,
+            height: 550,
+            resizable: true,
+            dataBound: function (e) {
+                var grid = $("#gridResults").data("kendoGrid");
+                for (var i = 0; i < grid.columns.length; i++) {
+                    grid.autoFitColumn(i);
+                }
+            }
+        });
+    }
+
+    function generateModel(gridData) {
+        var model = {};
+        var fields = {};
+        for (var property in gridData) {
+            var propType = typeof gridData[property];
+
+            if (propType == "number") {
+                fields[property] = {
+                    type: "number",
+                    validation: {
+                        required: true
+                    }
+                };
+            } else if (propType == "boolean") {
+                fields[property] = {
+                    type: "boolean",
+                    validation: {
+                        required: true
+                    }
+                };
+            } else if (propType == "string") {
+                var parsedDate = kendo.parseDate(gridData[property]);
+                if (parsedDate) {
+                    fields[property] = {
+                        type: "date",
+                        validation: {
+                            required: true
+                        }
+                    };
+                    dateFields.push(property);
+                } else {
+                    fields[property] = {
+                        validation: {
+                            required: true
+                        }
+                    };
+                }
+            } else {
+                fields[property] = {
+                    validation: {
+                        required: true
+                    }
+                };
+            }
+
+        }
+        model.fields = fields;
+
+        return model;
+    }
+
+    function generateColumns(gridData) {
+        gridColumnGeneration = [];
+        var fields = {};
+        for (var property in gridData) {
+            var propType = typeof gridData[property];
+
+            if (propType == "string") {
+                var parsedDate = kendo.parseDate(gridData[property]);
+                if (parsedDate) {
+                    gridColumnGeneration.push({ title: property, field: property, template: '#=kendo.toString(' + property + ',"dd/MM/yyyy")#' })
+                } else {
+                    gridColumnGeneration.push({ title: property, field: property })
+                }
+            } else {
+                gridColumnGeneration.push({ title: property, field: property })
+            }
+
+        }
+
+        return gridColumnGeneration;
+
+
+    }
+</script>
+<style>
+    .row-centered {
+        text-align:center;
+    }
+</style>
+<div id="content">
+    <div class="form-inline margin-bottom-10">
+        <div class="form-group margin-top-5">
+            <label>Report Name </label>
+        </div>
+        <div class="form-group mx-sm-3 mb-2">
+            @(Html.Kendo().DropDownList()
+                .Name("reports")
+
+                .DataTextField("PROCEDURE_NAME")
+                .DataValueField("PROCEDURE_NAME")
+                .DataSource(source =>
+                {
+                    source.Read(read =>
+                    {
+                        read.Action("GetStoreProcedureReport", "Helper");
+                    });
+                })
+                .HtmlAttributes(new { style = "width: 400px" })
+                .Events(e => e.Change("OnReportChange"))
+            )
+        </div>
+        <input id="btnExecuteReport" type="button" value="Execute Report" onclick="executeReport()" class="btn btn-primary mb-2" />
+    </div>
+    <div id="parametersContainer" class="margin-bottom-10">
+        @Html.Partial("_ParameterGrid")
+    </div>
+    <div id="load" style="display:none" class="row-centered">
+        Please wait...
+        <img src="//s.svgbox.net/loaders.svg?fill=maroon&ic=tail-spin"
+             style="width:24px">
+    </div>
+    <div id="outputContainer">
+        <div id="gridResults"></div>
+    </div>
+    <script>
+        $(document).ready(function () {
+            var dropdownlist = $("#reports").data("kendoDropDownList");
+            dropdownlist.select(1);
+            dropdownlist.trigger("change");
+
+        });
+    </script>
+</div>
+

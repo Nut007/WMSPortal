@@ -1,0 +1,26 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+<style>
+   
+</style>
+
+<div id="content">
+    <script>
+        function getHawbInfo() {
+            
+        }
+    </script>
+    <div class="panel panel-warning">
+        <div class="panel-heading">Panel with panel-warning class</div>
+        <div class="panel-body">
+            <div class="form-group">
+                Hawb No : <input id="hawb" type="text" class="k-textbox textfilter" style="width: 185px;" placeholder="Type to hawb..." />
+                <button type="button" id="getHawbInfo" class="k-button k-primary" onclick="getHawbInfo()">Get Hawb Info</button>
+            </div>
+        </div>
+    </div>
+    
+</div>

@@ -1,0 +1,459 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+<div id="content">
+
+    <style>
+        .k-grid td {
+            border-width: 0;
+        }
+
+        .label-as-badge {
+            padding: 1px 9px 2px;
+            font-size: 13.025px;
+            white-space: nowrap;
+            -webkit-border-radius: 0px;
+            -moz-border-radius: 0px;
+            border-radius: 0px;
+        }
+
+        a.clickable {
+            cursor: pointer;
+        }
+
+        .tsaReport {
+            background-image: url('../Content/kendo/Bootstrap/sprite.png');
+            background-position: -32px -240px;
+        }
+    </style>
+    <link href="~/Content/jQuery.FileUpload/css/jquery.fileupload.css" rel="stylesheet" />
+    <link href="~/Content/uploader/uploader-style.css" rel="stylesheet" />
+
+    <script src="~/Scripts/jQuery.FileUpload/jquery.iframe-transport.js"></script>
+    <script src="~/Scripts/jQuery.FileUpload/jquery.fileupload.js"></script>
+    <script src="~/Scripts/fileupload/" type="text/javascript"></script>
+    <script src="~/Scripts/fileupload/Uploader-Common.js"></script>
+    <script src="~/Scripts/fileupload/Uploader-single.core.js" type="text/javascript"></script>
+    <script src="~/Scripts/blockUI/jquery.blockUI.js"></script>
+    <script>
+        function TSAReport(mawb) {
+            $.when(kendo.ui.ExtInputDialog.show({
+                title: "Hand Over Date",
+                message: "Please enter hand over date:",
+                required: true
+            })
+            ).done(function (response) {
+                if (response.button == "OK") {
+                    window.location = '@Url.Action("TSAReport", "MailReport")?mawb=' + mawb + '&handoverdate=' + response.input
+                    console.log(kendo.format("{0} button clicked with input of: {1}",
+                        response.button, response.input));
+                } else {
+                    //
+                }
+            });
+
+        }
+        function CSDReport(mawb) {
+            window.location = '@Url.Action("CSDReport", "MailReport")?mawb=' + mawb + '&handoverdate='
+        }
+        function ManifestReport(mawb) {
+            window.location = '@Url.Action("ManifestReport", "MailReport")?mawb=' + mawb
+        }
+        function baggageFields_Select(e) {
+            var target;
+            var dataItem = this.dataItem(e.item);
+            if (dataItem.Value == "EDIT_DATE" || dataItem.Value == "ADD_DATE" || dataItem.Value == "ISSUED_DATE" )
+                target = ".date-filter";
+            else
+                target = ".textfilter";
+            VisibleFilter(target);
+        }
+        function additionalInfo() {
+            var columnName;
+            var datetimestart = $("#baggageStartdate").data("kendoDatePicker");
+            var datetimestop = $("#baggageStopdate").data("kendoDatePicker");
+            //alert(datetimestart.value());
+            if (datetimestart.value() == null) {
+                var todayDate = kendo.toString(kendo.parseDate(new Date()), 'dd/MM/yyyy');
+
+                $("#baggageStartdate").data("kendoDatePicker").value(todayDate);
+                $("#baggageStopdate").data("kendoDatePicker").value(todayDate);
+            }
+
+            var cat = $("#baggageFields").data("kendoDropDownList");
+            var status = $("#statusFields").data("kendoDropDownList");
+
+            if (cat != null) {
+                if (cat.value() == "EDIT_DATE" ||
+                    cat.value() == "ADD_DATE" ||
+                    cat.value() == "ISSUED_DATE")
+                    txtValue1 = kendo.toString(datetimestart.value(), "yyyy-MM-dd") + ' ' + '00:00:00';
+                else
+                    txtValue1 = document.getElementById('baggagefilter').value;
+
+                var txtValue2 = kendo.toString(datetimestop.value(), "yyyy-MM-dd") + ' ' + '23:59:59';
+
+                columnName = cat.value();
+            }
+            else {
+                columnName = "EDIT_DATE";
+            }
+
+            var column = columnName;
+            var value1 = txtValue1;
+            var value2 = txtValue2;
+            var status = status.value();
+            var userId = '@currentUser.UserName';
+            return {
+                column: column,
+                value1: value1,
+                value2: value2,
+                userId: userId,
+                status: status
+            }
+        }
+        function AddnewbaggagePopUp_onClose() {
+
+        }
+        function UploadUpliftPopUp_onClose() {
+
+        }
+    </script>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-left-sm">
+                <div class="form-group">
+                    Status:
+                </div>
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("statusFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                             new SelectListItem() {
+                                Text = "All",
+                                Value = "0"
+                            },
+                            new SelectListItem() {
+                                Text = "Acknowlage",
+                                Value = "1"
+                            },
+                            new SelectListItem() {
+                                Text = "Scanned",
+                                Value = "2"
+                            },
+                            new SelectListItem() {
+                                Text = "Loaded",
+                                Value = "3"
+                            },
+                            new SelectListItem() {
+                                Text = "Completed",
+                                Value = "4"
+                            }
+                        })
+                        .Value("0")
+                        .HtmlAttributes(new { style = "width:120px" })
+                    )
+                </div>
+                <div class="form-group">
+                    Search By:
+                </div>
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("baggageFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Scanned Date",
+                                Value = "EDIT_DATE"
+                            },
+                            new SelectListItem() {
+                                Text = "Added Date",
+                                Value = "ADD_DATE"
+                            },
+                            new SelectListItem() {
+                                Text = "Dispatch No",
+                                Value = "DESPATCH_NO"
+                            },
+                            new SelectListItem() {
+                                Text = "Receptacle No",
+                                Value = "RECEPTACLE_NO"
+                            },
+                            new SelectListItem() {
+                                Text = "Dest. Country",
+                                Value = "DESTINATION_COUNTRY"
+                            },
+                            new SelectListItem() {
+                                Text = "Dest. Port",
+                                Value = "DESTINATION_PORT"
+                            },
+                              new SelectListItem() {
+                                Text = "ULD No",
+                                Value = "PCNO"
+                            }
+                            ,
+                            new SelectListItem() {
+                                Text = "Mawb",
+                                Value = "MAWB"
+                            },
+                            new SelectListItem() {
+                                Text = "CN35",
+                                Value = "ID"
+                            },
+                            new SelectListItem() {
+                                Text = "CN38",
+                                Value = "LOT"
+                            },
+                            new SelectListItem() {
+                                Text = "Issued Date",
+                                Value = "ISSUED_DATE"
+                            },
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("baggageFields_Select");
+                        })
+                        .Value("EDIT_DATE")
+                        .HtmlAttributes(new { style = "width:120px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="baggagefilter" type="text" class="k-textbox textfilter" style="width: 185px;" placeholder="Type to filter..." />
+                    <div class="date-filter">
+                        @(Html.Kendo().DatePicker()
+                            .Name("baggageStartdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .HtmlAttributes(new { @style = "width: 105px;" })
+                        )
+                        @(Html.Kendo().DatePicker()
+                            .Name("baggageStopdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .HtmlAttributes(new { @style = "width: 105px;" })
+                        )
+                    </div>
+                </div>
+                <button type="button" id="searchBaggage" class="k-button k-primary" onclick="searchBaggage()">Search</button>
+            </div>
+        </div>
+    </div>
+    @helper ToolbarTemplate()
+{
+    <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+    @*<a class="k-button k-button-icontext k-grid-add addnewbaggage"><span><img src="~/Content/img/add.png" /></span> Add new baggage</a>*@
+    @*<a class="k-button k-button-icontext k-grid-add uploadUpliftReport"><span><img src="~/Content/img/folder.png" /></span> Upload Uplift Report</a>*@
+    @Ajax.ActionLink("Import Baggages Data", "Upload", "Uploader", new AjaxOptions { HttpMethod = "GET", UpdateTargetId = "createView", OnSuccess = "createMode()", InsertionMode = InsertionMode.Replace })
+}
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<BaggageListViewModel>()
+            .Name("baggageGrid")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.SHIPMENT_STATUS).ClientTemplate(" # if (SHIPMENT_STATUS=='1') { #" +
+                       "<div style='display:inline-block; width:80px' class='label label-warning label-as-badge'>Acknowlaged</div>" +
+                       "# } else if (SHIPMENT_STATUS=='2')  { #" +
+                       "<div style='display:inline-block; width:80px' class='label label-success label-as-badge'>Scanned</div>" +
+                       "# } else if (SHIPMENT_STATUS=='3')  { #" +
+                       "<div style='display:inline-block; width:80px' class='label label-info label-as-badge'>Loaded</div>" +
+                       "# } else { #" +
+                       "<div style='display:inline-block; width:80px' class='label label-primary label-as-badge'>Completed</div>" +
+                       "# } #").Width(25).Title("Status");
+                columns.Bound(o => o.DESPATCH_NO).Width(25).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.RECEPTACLE_NO).Width(25).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.LOT).Width(25).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.DESTINATION_PORT).Width(25).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.ADD_DATE).ClientTemplate("#= ConvertDateTimeFormat(ADD_DATE) #").Width(25);
+                columns.Bound(o => o.EDIT_DATE).ClientTemplate("#= ConvertDateTimeFormat(EDIT_DATE) #").Width(25);
+                columns.Bound(o => o.GROSS_WEIGHT).Width(25);
+                columns.Bound(o => o.PCNO).Width(25).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.MASTER_ID).Width(40).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)))
+                .ClientTemplate("#=MASTER_ID#" +
+                        "# if (MASTER_ID!='') { #" +
+                        "&nbsp;<a class='clickable masterTooltip' title='TSA Report'  onclick=TSAReport('#=MASTER_ID#')><img src='../Images/document_color_green.png' /></a>" +
+                        "# } #" +
+                        "# if (MASTER_ID!='') { #" +
+                        "&nbsp;<a class='clickable' title='CSD Report' onclick=CSDReport('#=MASTER_ID#')><img src='../Images/document_color_red.png' /></a>" +
+                        "# } #"+
+                        "# if (MASTER_ID!='') { #" +
+                        "&nbsp;<a class='clickable' title='Manifest Report' onclick=ManifestReport('#=MASTER_ID#')><img src='../Images/document_color_blue.png' /></a>" +
+                        "# } #");
+                columns.Bound(o => o.ID).Width(60).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains))).ClientFooterTemplate("<div>Count: #= count #</div>");
+                //.ClientFooterTemplate("<div>Sum: #= kendo.format('{0:n1}',sum) #</div>");
+            })
+                .Filterable(ftb => ftb.Mode(GridFilterMode.Row))
+                .ToolBar(toolbar =>
+                    {
+                        toolbar.Template(@<text>
+                            @ToolbarTemplate()
+                        </text>);
+                    })
+                .Excel(ex => ex.AllPages(true).FileName("BaggageReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+                .ToolBar(tools => tools.Excel())
+                .Pageable()
+                .Sortable()
+                .Scrollable()
+                .DataSource(dataSource => dataSource
+                .Ajax()
+                .PageSize(50)
+                .Model(model => model.Id(p => p.ID))
+                .Aggregates(aggregates =>
+                {
+                    aggregates.Add(p => p.ID).Count();
+                    aggregates.Add(p => p.GROSS_WEIGHT).Sum();
+                })
+                .Read(read => read.Action("GetBaggageList", "Receipt").Data("additionalInfo"))
+                .ServerOperation(false)
+                )
+            )
+            <style>
+                .k-grid tbody .k-button {
+                    min-width: 0px;
+                }
+
+                .k-grid-PrintForm span {
+                    background-image: url('../Images/delete.png');
+                    width: 14px;
+                    height: 14px;
+                    line-height: 14px;
+                    display: inline-block;
+                    background-position: -96px -48px;
+                }
+            </style>
+        </div>
+    </div>
+    @(Html.Kendo().Window()
+        .Name("addnewbaggagePopUp")
+        .Visible(false)
+        .Width(300)
+        .Height(400)
+        .Position(settings => settings.Top(70).Left(200))
+        .Title("Add new baggage")
+        .Content("")
+        .Iframe(true)
+        .Animation(false)
+        .Resizable()
+        .Draggable()
+        .Events(events => events
+        .Close("AddnewbaggagePopUp_onClose")
+    )
+    )
+    @(Html.Kendo().Window()
+        .Name("uploadUpliftPopUp")
+        .Visible(false)
+        .Modal(true)
+        .Width(800)
+        .Height(600)
+        .Position(settings => settings.Top(70).Left(200))
+        .Title("Upload uplift report")
+        .Content("")
+        .Iframe(true)
+        .Animation(false)
+        .Resizable()
+        .Draggable()
+        .Events(events => events
+        .Close("UploadUpliftPopUp_onClose")
+    )
+    )
+
+    <div id="createView">
+    </div>
+    <script>
+        $(document).ready(function () {
+            VisibleFilter(".date-filter");
+            ResizeGrid();
+            searchBaggage();
+
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        function PrintTSAReport(mawb) {
+
+        }
+        function PrintCSDReport(mawb) {
+            $.ajax({
+                url: '@Url.Action("TSAReport", "MailReport")',
+                type: 'post',
+                data: { mawb: mawb },
+                success: function (data) {
+                    if (data.isValid == null) {
+
+                    }
+                    else {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: data.exceptionErrorMessage,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                    }
+                },
+                complete: function (data) {
+                    //
+                },
+                error: function (xhr) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: xhr.responseText,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+            });
+        }
+        function ResizeGrid() {
+            var gridElement = $("#baggageGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+
+        function searchBaggage() {
+            $("#baggageGrid").data("kendoGrid").dataSource.read();
+        }
+
+        function VisibleFilter(target) {
+            $(".date-filter").hide();
+            $(".textfilter").hide();
+            $(target).show();
+        }
+
+        $("#baggageGrid").on("click", ".addnewbaggage", function (e) {
+            e.preventDefault();
+            var win = $("#addnewbaggagePopUp").data("kendoWindow");
+            if (win != null) {
+                var url = '@Url.Action("AddNewBaggage", "Receipt")';
+                win.refresh(url);
+                win.open();
+                win.center();
+            }
+        });
+        $("#baggageGrid").on("click", ".uploadUpliftReport", function (e) {
+            e.preventDefault();
+            var win = $("#uploadUpliftPopUp").data("kendoWindow");
+            if (win != null) {
+                var url = '@Url.Action("UploadUpliftReport", "Receipt")';
+                win.refresh(url);
+                win.open();
+                win.center();
+            }
+        });
+
+    </script>
+
+</div>

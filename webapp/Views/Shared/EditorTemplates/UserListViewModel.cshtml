@@ -1,0 +1,52 @@
+﻿@using System.Collections
+@using Kendo.Mvc.UI;
+@using WMSPortal.ViewModels;
+
+@model UserListViewModel
+
+<style>
+    div.k-tabstrip {
+        background: none transparent;
+        border-width: 0;
+    }
+
+    div.k-tabstrip:focus {
+        box-shadow: none;
+    }
+
+    div.k-tabstrip .k-tabstrip-items {
+        padding: 0;
+    }
+
+    div.k-tabstrip .k-content {
+        border-width: 1px 0 0;
+        margin: 0;
+    }
+
+    .wrapper {
+        width: 450px;
+        height: 300px;
+        /*margin: 20px auto;
+        padding: 20px 0 0 390px;*/
+    }
+</style>
+
+@Html.HiddenFor(model => model.UserID, new { @class = "k-textbox" })
+
+<div class="wrapper">
+    @(Html.Kendo().TabStrip()
+        .Name("usertabstrip")
+        .SelectedIndex(0)
+        .Animation(false)
+        .Items(items =>
+        {
+            items.Add()
+                .Text("User")
+                .Content(@Html.Partial("_User").ToHtmlString());
+            items.Add()
+                .Text("Connections")
+                .Content(@Html.Partial("_UserRole", Model).ToHtmlString());
+        })
+    )
+
+</div>

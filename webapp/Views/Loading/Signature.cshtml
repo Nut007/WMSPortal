@@ -1,0 +1,39 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];}
+
+<div id="content">
+    <!--[if lt IE 9]>
+        <script type="text/javascript" src="~/Scripts/jsignature/flashcanvas.js"></script>
+    <![endif]-->
+    <script type="text/javascript" src="~/Scripts/jsignature/jSignature.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#divSignature").jSignature({ width: 220, height: 80, mousedown: function () { } });
+            $extraarea = $('#displayarea')
+            //$("#divSignature").jSignature({ width: 650, height: 250 });
+        });
+        function getsignature() {
+            var i = new Image()
+
+            var datapair = $("#divSignature").jSignature("getData", "svgbase64")
+            i.src = "data:" + datapair[0] + "," + datapair[1]
+
+            //var data = $("#divSignature").jSignature("getData");
+            //i.src = 'data:' + 'image/png;base64' + ',' + data
+            //$('<span><b>As you can see, one of the problems of "image" extraction (besides not working on some old Androids, elsewhere) is that it extracts A LOT OF DATA and includes all the decoration that is not part of the signature.</b></span>').appendTo($extraarea)
+            $(i).appendTo($('#displayarea'))
+            @*var data = $("#divSignature").jSignature("getData");
+            $.ajax({
+                type: "POST",
+                url: ('@Url.Action("saveData", "Loading")'),    
+                data: { signature: $("#divSignature").jSignature("getData") }
+            });*@
+        }
+    </script>
+    <div id="divSignature" style="border: solid 1px black; width : 220px; height : 80px"></div>
+    <input id="btnSave" type="button" value="Save" onclick="return getsignature();" />
+    <input type="button" value="clear" onclick="$('#divSignature').jSignature('clear');" />
+    <div><p>Display Area:</p><div id="displayarea"></div></div>
+</div>

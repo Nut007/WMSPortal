@@ -1,0 +1,33 @@
+﻿@using System.Collections
+@using Kendo.Mvc.UI;
+@using WMSPortal.ViewModels;
+
+@model RoleListViewModel
+
+<div class="row padding-left-10 padding-right-0" style="width: 450px;">
+
+    <div class="col-md-9">
+        <div class=" form-group">
+            @Html.LabelFor(model => model.Name, new { @class = "editor-caption" })
+            @Html.TextBoxFor(model => model.Name, new { @class = "k-textbox" })
+        </div>
+        <div><h6 class="header-caption">Database Connection</h6></div>
+        <div class=" form-group">
+            @Html.LabelFor(model => model.ServerName, new { @class = "editor-caption" })
+            @Html.TextBoxFor(model => model.ServerName, new { @class = "k-textbox" })
+        </div>
+        <div class=" form-group">
+            @Html.LabelFor(model => model.DatabaseName, new { @class = "editor-caption" })
+            @Html.TextBoxFor(model => model.DatabaseName, new { @class = "k-textbox" })
+        </div>
+        <div class=" form-group">
+            @Html.LabelFor(model => model.UserName, new { @class = "editor-caption" })
+            @Html.TextBoxFor(model => model.UserName, new { @class = "k-textbox" })
+        </div>
+        <div class=" form-group">
+            @Html.LabelFor(model => model.Password, new { @class = "editor-caption" })
+            @Html.PasswordFor(model => model.Password, new { @class = "k-textbox" })
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,143 @@
+﻿@model AccountLoginModel
+@{
+    ViewBag.PageId = "extr-page";
+    ViewBag.PageClass = "animated fadeInDown";
+}
+
+@section topright{
+    <span id="extr-page-header-space">
+        <span class="hidden-mobile">Need an account?</span>
+        <a href="@Url.Action("register", "account")" class="btn btn-danger disabled">Create account</a>
+    </span>
+}
+
+<div id="content" class="container">
+    <div class="row margin-top-15">
+        @{ Html.RenderPartial("_LoginText"); }
+        <div class="col-xs-12 col-sm-12 col-md-5 col-lg-4">
+            <div class="well no-padding">
+                <form action="@Url.Action("login", "account")" method="POST" id="login-form" class="smart-form client-form">
+                    <header>
+                        Sign In
+                    </header>
+                    @Html.HiddenFor(m => m.ReturnUrl)
+                    <input type="hidden" id="ConnectionId" name="ConnectionId" value="">
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationBootstrap()
+                    <fieldset>
+                        <section>
+                            <label class="label">User Name</label>
+                            <label class="input">
+                                <i class="icon-append fa fa-user"></i>
+                                <input type="text" name="username" id="username" value="" onblur="GetRoles()">
+                                <b class=" tooltip tooltip-top-right"><i class="fa fa-user txt-color-teal"></i> Please enter username</b>
+                            </label>
+                        </section>
+                        <section>
+                            <label class="label">Password</label>
+                            <label class="input">
+                                <i class="icon-append fa fa-lock"></i>
+                                <input type="password" name="password" value="">
+                                <b class="tooltip tooltip-top-right"><i class="fa fa-lock txt-color-teal"></i> Enter your password</b>
+                            </label>
+                            @*<div class="note">
+                                    <a href="@Url.Action("forgotpassword", "account")"><i class="fa fa-frown-o"></i> Forgot password?</a>
+                                </div>*@
+                        </section>
+                        <section>
+                            <label class="label">Connection</label>
+                            <label class="select">
+                                <select name="connection" id="connection"></select><b class="tooltip tooltip-top-right"><i class="fa fa-lock txt-color-teal"></i> Select connection</b>
+                            </label>
+                        </section>
+                        <section>
+                            <label class="checkbox">
+                                <input type="checkbox" name="rememberMe" value="true" checked="checked">
+                                <input type="hidden" name="rememberMe" value="false" />
+                                <i></i>Stay signed in
+                            </label>
+                        </section>
+                    </fieldset>
+                    <footer>
+                        <button type="submit" class="btn btn-primary" id="summitLogin">
+                            Sign in
+                        </button>
+                    </footer>
+                </form>
+            </div>
+            @*@{ Html.RenderPartial("_SocialMedia"); }*@
+        </div>
+    </div>
+</div>
+@section pagespecific {
+    <script type="text/javascript">
+        function GetRoles() {
+           
+            var name = $("#username").val();
+         
+            $.ajax({
+                url: "@Url.Action("GetRolesByUser", "User")",
+                type: 'POST',
+                contentType: "application/json;charset=utf-8",
+                data: JSON.stringify({ userName: name }),
+                dataType: "json",
+                success: function (data) {
+                    var data = data.Data;
+                    var select = $("#connection"), options = '';
+                    select.empty();
+                    for (var i = 0; i < data.length; i++) {
+                        options += "<option value='" + data[i].Id + "'>" + data[i].Name + "</option>";
+                    }
+
+                    select.append(options);
+                },
+                error: function (xhr, status, error) {
+                    alert(error);
+                }
+
+
+            });
+            
+        }
+
+        $(function () {
+            $('#summitLogin').click(function () {
+                $('#ConnectionId').val($("#connection :selected").val());
+            });
+            $("#login-form").validate({
+                // Rules for form validation
+                rules: {
+                    username: {
+                        required: true
+                    },
+                    password: {
+                        required: true,
+                        minlength: 3,
+                        maxlength: 20
+                    },
+                    connection: {
+                        required: true
+                    },
+                },
+
+                // Messages for form validation
+                messages: {
+                    username: {
+                        required: 'Please enter your user name'
+                    },
+                    password: {
+                        required: 'Please enter your password'
+                    },
+                    connection: {
+                        required: 'Please select connection'
+                    }
+                },
+
+                // Do not change code below
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element.parent());
+                }
+            });
+        });
+    </script>
+}

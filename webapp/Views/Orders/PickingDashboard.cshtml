@@ -1,0 +1,309 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+
+}
+
+<div id="content">
+    <style>
+        .k-detail-cell .k-tabstrip .k-content {
+            padding: 0.2em;
+        }
+
+        .k-grid {
+            font-size: 14px;
+        }
+
+            .k-grid td {
+                line-height: 2em;
+            }
+
+        .fa-5x {
+            font-size: 5em;
+        }
+
+        .huge {
+            font-size: 40px;
+        }
+
+        .mySearchIcon {
+            background-image: url('../Content/kendo/Bootstrap/sprite.png');
+            background-position: -32px -240px;
+        }
+
+        
+    </style>
+
+    <script>
+    function onRowBound(e) {
+        $(".k-grid-Detail").find("span").addClass("k-icon k-edit");
+        GetCLPTodaySummary();
+    }
+
+    function outboundGrid_onError(e) {
+        if (e.errors || e.status =="error") {
+            var message = ""; 
+            var status = "";
+            if (e.status == "error")
+                message = e.errorThrown;
+            else
+            {
+                $.each(e.errors, function (key, value) {
+                    status = key;
+                    if ('errors' in value) {
+                        $.each(value.errors, function () {
+                            message += this + "\n";
+                        });
+                    }
+                });
+
+            }
+            if (status.indexOf("ex") > -1 || e.status == "error") {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Error",
+                    message: message,
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+            }
+        }
+    }
+    </script>
+    <div class="row">
+        <div class="col-6 col-md-4">
+            @(Html.Kendo().Grid<OrdersListViewModel>()
+            .Name("outboundGrid_1")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.Status).Width(35).Title("Status");
+                columns.Bound(o => o.OrderKey).Width(30);
+                columns.Bound(o => o.OrderDate).ClientTemplate("#= ConvertDateFormat(OrderDate) #").Width(50);
+                columns.Bound(o => o.ExternOrderKey).Width(30);
+                columns.Bound(o => o.OpenQty).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.RoutingNotes).Width(60);
+                columns.Bound(o => o.Date5).ClientTemplate("#= ConvertDateFormat(Date5) #").Width(30);
+                columns.Bound(o => o.KK).Width(60);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("OrdersReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+                </text>);
+            })
+                .Pageable()
+                .Sortable()
+                .Scrollable()
+                .Excel(excel => excel
+                .FileName("OutboundReport.xlsx")
+                .Filterable(true)
+                .ProxyURL(Url.Action("ExportToExcel", "Orders"))
+                )
+                .DataSource(dataSource => dataSource
+                .Ajax()
+                .Events(events => events.Error("outboundGrid_onError"))
+                .PageSize(50)
+                .Model(model =>
+                {
+                    model.Id(p => p.OrderKey);
+                    model.Id(p => p.OrderLineNumber);
+                })
+                .Read(read => read.Action("GetPickingDashboard", "Orders"))
+                .ServerOperation(false)
+                )
+            )
+        </div>
+        <div class="col-6 col-md-4">
+            @(Html.Kendo().Grid<OrdersListViewModel>()
+            .Name("outboundGrid_2")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.Status).Width(35).Title("Status");
+                columns.Bound(o => o.OrderKey).Width(30);
+                columns.Bound(o => o.OrderDate).ClientTemplate("#= ConvertDateFormat(OrderDate) #").Width(50);
+                columns.Bound(o => o.ExternOrderKey).Width(30);
+                columns.Bound(o => o.OpenQty).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.RoutingNotes).Width(60);
+                columns.Bound(o => o.Date5).ClientTemplate("#= ConvertDateFormat(Date5) #").Width(30);
+                columns.Bound(o => o.KK).Width(60);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("OrdersReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+                </text>);
+            })
+                .Pageable()
+                .Sortable()
+                .Scrollable()
+                .Excel(excel => excel
+                .FileName("OutboundReport.xlsx")
+                .Filterable(true)
+                .ProxyURL(Url.Action("ExportToExcel", "Orders"))
+                )
+                .DataSource(dataSource => dataSource
+                .Ajax()
+                .Events(events => events.Error("outboundGrid_onError"))
+                .PageSize(50)
+                .Model(model =>
+                {
+                    model.Id(p => p.OrderKey);
+                    model.Id(p => p.OrderLineNumber);
+                })
+                .Read(read => read.Action("GetPickingDashboard", "Orders"))
+                .ServerOperation(false)
+                )
+            )
+        </div>
+        <div class="col-6 col-md-4">
+            @(Html.Kendo().Grid<OrdersListViewModel>()
+            .Name("outboundGrid_3")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.Status).Width(35).Title("Status");
+                columns.Bound(o => o.OrderKey).Width(30);
+                columns.Bound(o => o.OrderDate).ClientTemplate("#= ConvertDateFormat(OrderDate) #").Width(50);
+                columns.Bound(o => o.ExternOrderKey).Width(30);
+                columns.Bound(o => o.OpenQty).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.RoutingNotes).Width(60);
+                columns.Bound(o => o.Date5).ClientTemplate("#= ConvertDateFormat(Date5) #").Width(30);
+                columns.Bound(o => o.KK).Width(60);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("OrdersReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+                </text>);
+            })
+            .Pageable()
+            .Sortable()
+            .Scrollable()
+            .Excel(excel => excel
+            .FileName("OutboundReport.xlsx")
+            .Filterable(true)
+            .ProxyURL(Url.Action("ExportToExcel", "Orders"))
+            )
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .Events(events => events.Error("outboundGrid_onError"))
+            .PageSize(50)
+            .Model(model =>
+            {
+                model.Id(p => p.OrderKey);
+                model.Id(p => p.OrderLineNumber);
+            })
+            .Read(read => read.Action("GetPickingDashboard", "Orders"))
+            .ServerOperation(false)
+            )
+            )
+        </div>
+    </div>
+    <div class="col-xs-6 col-md-4">
+        <h2 class="header-caption">Order pending for two days now - <label id="currentDate"></label></h2>
+    </div>
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<OrdersListViewModel>()
+            .Name("outboundGrid")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.Status).Width(35).Title("Status");
+                columns.Bound(o => o.OrderKey).Width(30);
+                columns.Bound(o => o.OrderDate).ClientTemplate("#= ConvertDateFormat(OrderDate) #").Width(50);
+                columns.Bound(o => o.ExternOrderKey).Width(30);
+                columns.Bound(o => o.OpenQty).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.RoutingNotes).Width(60);
+                columns.Bound(o => o.Date5).ClientTemplate("#= ConvertDateFormat(Date5) #").Width(30);
+                columns.Bound(o => o.KK).Width(60);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("OrdersReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+                </text>);
+            })
+                .Pageable()
+                .Sortable()
+                .Scrollable()
+                .Excel(excel => excel
+                .FileName("OutboundReport.xlsx")
+                .Filterable(true)
+                .ProxyURL(Url.Action("ExportToExcel", "Orders"))
+                )
+                .DataSource(dataSource => dataSource
+                .Ajax()
+                .Events(events => events.Error("outboundGrid_onError"))
+                .PageSize(50)
+                .Model(model =>
+                {
+                    model.Id(p => p.OrderKey);
+                    model.Id(p => p.OrderLineNumber);
+                })
+                .Read(read => read.Action("GetPickingDashboard", "Orders"))
+                .ServerOperation(false)
+                )
+            )
+
+        </div>
+    </div>
+
+    <script>
+       
+        $(document).ready(function () {
+            ResizeGrid();
+            var today = moment().format('D MMM, YYYY');
+            $("#currentDate").text(today);
+            readData();
+        });
+        $("#iconButton").kendoButton({
+            spriteCssClass: "mySearchIcon"
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        function ResizeGrid() {
+            var gridElement = $("#outboundGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+
+        function readData() {
+            debugger
+            var grid = $('#outboundGrid').data('kendoGrid');
+            if (grid !== null && grid !== undefined) {
+                grid.dataSource.read();
+                var today = moment().format('D MMM, YYYY');
+                $("#currentDate").text(today);
+            }
+        }
+        (function () {
+            setInterval(function () { readData(); }, 60000);
+        })();
+    </script>
+
+</div>

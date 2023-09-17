@@ -1,0 +1,300 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+<div id="content">
+
+    <script>
+
+        function categories_OnChange(e) {
+            var cat = $("#categories").data("kendoDropDownList").value();
+            VisibleColumns(cat);
+            SearchInventory();
+        }
+        function stockFields_Select(e) {
+            var target;
+            target = ".textfilter";
+        }
+        function additionalInfo() {
+            var colvalues = [];
+            var cat = $("#categories").data("kendoDropDownList");
+            var field = $("#stockFields").data("kendoDropDownList");
+            var txtValue1 = document.getElementById('stockfilter').value;
+            var userId = '@currentUser.UserName';
+            colvalues.push(field.value() + "|" + txtValue1);
+            return {
+                columnvalues: colvalues,
+                viewBy: cat.value(),
+                userId: userId
+            }
+        }
+    </script>
+
+    <style>
+        #stockGrid .k-grid-toolbar {
+            padding: .6em 1.3em;
+        }
+
+        .category-label {
+            vertical-align: middle;
+            padding-right: .5em;
+        }
+
+        #category {
+            vertical-align: middle;
+        }
+
+        .toolbar {
+            float: right;
+        }
+        a {
+            cursor: pointer;
+        }
+        #stockGrid > .k-grid-header > div > table,
+        #stockGrid > .k-grid-content > table
+        {
+           width: 100% !important;
+        }
+    </style>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Inventory Balance</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("stockFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Sku",
+                                Value = "l.Sku"
+                            },  
+                            new SelectListItem() {
+                                Text = "Storer",
+                                Value = "l.StorerKey"
+                            },  
+                            new SelectListItem() {
+                                Text = "Lot",
+                                Value = "l.Lot"
+                            },    
+                            new SelectListItem() {
+                                Text = "Location",
+                                Value = "l.Loc"
+                            },     
+                            new SelectListItem() {
+                                Text = "Id",
+                                Value = "l.Id"
+                            },                   
+                        })
+                        
+                        .Events(e =>
+                        {
+                            e.Change("stockFields_Select");
+                        })
+                        .Value("Sku")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="stockfilter" type="text" class="k-textbox textfilter" style="width: 185px;" placeholder="Type to filter..." value=@ViewBag.SkuFilter />
+                </div>
+                <button type="button" id="searchInventory" class="k-button k-primary" onclick="SearchInventory()" >Search</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+
+            @(Html.Kendo().Grid<StockBalanceViewModel>()
+            .Name("stockGrid")
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.StorerKey).Width(100);
+                columns.Bound(o => o.Sku).Width(150);
+                columns.Bound(o => o.QtyAllocated).Width(150);
+                columns.Bound(o => o.SkuDescription).Width(200);
+                columns.Bound(o => o.Lot).Width(100).Hidden();
+                columns.Bound(o => o.Loc).Width(100).Hidden();
+                columns.Bound(o => o.Id).Width(150).Hidden();
+                columns.Bound(p => p.Qty).ClientTemplate(
+                  "# if (Qty>0) { #" +
+                      "<a onclick=\"FilterInventory(event)\">#=Qty#</a>" +
+                      "#} else {#" +
+                       "#=Qty#" +
+                  "# }#").Width(80).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(p => p.QtyAllocated).ClientTemplate(
+                  "# if (QtyAllocated>0) { #" +
+                      "<a onclick=\"FilterInventory(event)\">#=QtyAllocated#</a>" +
+                      "#} else {#" +
+                       "#=QtyAllocated#" +
+                  "# }#").Width(80).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(p => p.QtyPicked).ClientTemplate(
+                 "# if (QtyPicked>0) { #" +
+                     "<a onclick=\"FilterInventory(event)\">#=QtyPicked#</a>" +
+                     "#} else {#" +
+                      "#=QtyPicked#" +
+                 "# }#").Width(80).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(p => p.QtyAvaliable).ClientTemplate(
+                  "# if (QtyAvaliable>0) { #" +
+                      "<a onclick=\"FilterInventory(event)\">#=QtyAvaliable#</a>" +
+                      "#} else {#" +
+                       "#=QtyAvaliable#" +
+                  "# }#").Width(80).HtmlAttributes(new { style = "text-align: right" });
+
+                columns.Bound(o => o.ImportEntry).Width(150).Hidden();
+                columns.Bound(o => o.UnitPrice).Width(80).Hidden();
+                columns.Bound(o => o.GrossWgt).Width(80).Hidden();
+                columns.Bound(o => o.NetWgt).Width(80).Hidden();
+                //columns.Bound(o => o.Lottable04).ClientTemplate("#= ConvertDateFormat(Lottable04) #").Width(130);
+                //columns.Bound(o => o.Lottable05).ClientTemplate("#= ConvertDateFormat(Lottable05) #").Width(130);
+            })
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                   <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                   </div>
+                   <div class="toolbar">
+                            
+                            <label class="category-label" for="category">Show inventories by :</label>
+                               @(Html.Kendo().DropDownList()
+                                .Name("categories")
+                                .DataTextField("Text")
+                                .DataValueField("Value")
+                                .BindTo(new List<SelectListItem>() {
+                                    new SelectListItem() {
+                                        Text = "Detail",
+                                        Value = "0"
+                                    },
+                                    new SelectListItem() {
+                                        Text = "Sku",
+                                        Value = "1"
+                                    },
+                                   new SelectListItem() {
+                                        Text = "Sku / Location",
+                                        Value = "2"
+                                    },
+                                })
+                                .Events(e =>
+                                {
+                                    e.Change("categories_OnChange");
+                                })
+                                .Value("1")
+                                .HtmlAttributes(new { style = "width:185px" })
+                               )
+                        </div>
+                </text>);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("InventoryBalance_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .Pageable(pageable => pageable.ButtonCount(5))                
+            .Sortable()
+            .Scrollable()
+            //.Selectable(select => select.Mode(GridSelectionMode.Single))
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .ServerOperation(true) 
+            .PageSize(50)
+            .Model(model => model.Id(p => p.Id))
+            .Read(read => read.Action("GetInventory", "StockBalance").Data("additionalInfo"))
+            )
+            )
+
+        </div>
+    </div>
+
+    @*<input type="button" value="Confirm" class="big-button" onclick="formSubmit()"  />*@
+
+    <script>
+        $(document).ready(function () {
+            VisibleFilter(".textfilter");
+            ResizeGrid();
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        //function formSubmit() {
+        //    $('form').submit();
+        //    parent.$('#editPasswordPopUp').data('kendoWindow').close();
+        //}
+        function VisibleColumns(cat) {
+            var grid = $("#stockGrid").data("kendoGrid");
+            grid.hideColumn("Lot");
+            grid.hideColumn("Loc");
+            grid.hideColumn("Id");
+            grid.hideColumn("ImportEntry");
+            grid.hideColumn("UnitPrice");
+            grid.hideColumn("NetWgt");
+            grid.hideColumn("GrossWgt");
+            if (cat == "0") {
+                grid.showColumn("Lot");
+                grid.showColumn("Loc");
+                grid.showColumn("Id");
+                grid.showColumn("ImportEntry");
+                grid.showColumn("UnitPrice");
+                grid.showColumn("NetWgt");
+                grid.showColumn("GrossWgt");
+            }
+            else if (cat == "2") {
+                grid.showColumn("Loc");
+            }
+        }
+        function SearchInventory() {
+            $("#stockGrid").data("kendoGrid").dataSource.read();
+        }
+        function FilterInventory(e) {
+            var colvalues = [];
+            var cat = $("#categories").data("kendoDropDownList").value();
+            var grid = $("#stockGrid").data("kendoGrid");
+            var model = grid.dataItem($(e.target).closest("tr"));
+
+            if (cat == "0") {
+                colvalues.push("l.Lot|" + model.Lot);
+                colvalues.push("l.Loc|" + model.Loc);
+                colvalues.push("l.Id|" + model.Id);
+            }
+            else if (cat == "1") {
+                colvalues.push("l.Sku|" + model.Sku);
+            }
+            else if (cat == "2") {
+                colvalues.push("l.Sku|" + model.Sku);
+                colvalues.push("l.Loc|" + model.Loc);
+            }
+            $("#categories").data("kendoDropDownList").value("0");
+            $('#stockGrid').data('kendoGrid').dataSource.read({ "columnvalues": colvalues, "viewBy": $("#categories").data("kendoDropDownList").value() });
+            VisibleColumns($("#categories").data("kendoDropDownList").value());
+        }
+        function VisibleFilter(target) {
+            $(".textfilter").hide();
+            $(target).show();
+        }
+
+        function ResizeGrid() {
+            var gridElement = $("#stockGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 260;
+            dataArea.height(gridHeight);
+        }
+        function getUrlVars() {
+            var vars = [], hash;
+            var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+            for (var i = 0; i < hashes.length; i++) {
+                hash = hashes[i].split('=');
+                vars.push(hash[0]);
+                vars[hash[0]] = hash[1];
+            }
+            return vars;
+        }
+
+    </script>
+</div>

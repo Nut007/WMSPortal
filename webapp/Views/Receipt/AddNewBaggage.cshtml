@@ -1,0 +1,249 @@
+﻿@model BaggageListViewModel
+@using WMSPortal.ViewModels;
+@{
+    Layout = "~/Views/Shared/_EmptyLayout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+<style>
+    #toolbar {
+        border-width: 0 0 1px;
+    }
+
+    .field-validation-valid {
+        display: none;
+    }
+
+    .fixed-ribbon #content {
+        padding-top: 40px;
+    }
+
+    #content {
+        padding: 0px 0px;
+        position: relative;
+    }
+</style>
+<script src="~/Scripts/jquery.validate.min.js"></script>
+<script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+<script type="text/Javascript">
+    function displayValidationErrors(errors) {
+        var $ul = $('div.validation-summary-valid.text-danger > ul');
+
+        $ul.empty();
+        if (errors != undefined) {
+            $.each(errors, function (idx, error) {
+                $ul.append('<li>' + error.Message + '</li>');
+            });
+        }
+    }
+
+    function showErrors(errorMessage, errormap, errorlist) {
+        var val = this;
+        errormap.forEach(function (error, index) {
+            val.settings.highlight.call(val, error.element, val.settings.errorClass, val.settings.validClass);
+            $(error.element).siblings("span.field-validation-valid, span.field-validation-error").html($("<span></span>").html(error.message)).addClass("field-validation-error").removeClass("field-validation-valid").show();
+        });
+    }
+
+    function fixValidFieldStyles($form, validator) {
+        var errors = {};
+        $form.find("input,select").each(function (index) {
+            var name = $(this).attr("name");
+            errors[name] = validator.errorsFor(name);
+        });
+        validator.showErrors(errors);
+        var invalidFields = $form.find("." + validator.settings.errorClass);
+        if (invalidFields.length) {
+            invalidFields.each(function (index, field) {
+                if ($(field).valid()) {
+                    $(field).removeClass(validator.settings.errorClass);
+                }
+            });
+        }
+    }
+</script>
+
+@using (Html.BeginForm(new { id = "frmAddNewBaggage" }))
+{
+    @Html.AntiForgeryToken()
+    <form>
+        <div class="form-group padding-top-5 alert-success">
+            <div class="col-md-10">
+                <label id="lbMawb">Mawb Number :</label><b>@ViewBag.MAWB</b>
+            </div>
+            <div class="col-md-10">
+                <label id="lbContainer">Container Number :</label><b>@ViewBag.ContainerNo</b>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="form-group padding-top-5 padding-bottom-20">
+                <div class="col-md-10">
+                    <input type="button" class="btn-info btn" id="btnSave" value="Save baggage" />
+                    <input type="button" class="btn btn-default " id="btnClose" value="Close window" />
+                </div>
+            </div>
+            <div class="row packing">
+                <div class="col-sm-12">
+                    <div class="col-sm-11">
+                        <div class="widget-body no-padding">
+                            <table id="tblBaggage" class="display projects-table table table-striped table-bordered table-hover" cellspacing="0" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th><input name="select_all" value="1" id="tblBaggage-select-all" type="checkbox" /></th>
+                                        <th class="dispatch">CN35</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </form>
+
+
+}
+<script type="text/Javascript">
+
+    $(document).ready(function () {
+        var table = $('#tblBaggage').DataTable({
+            "paging": false,
+            "ordering": false,
+            "info": false,
+            'columnDefs': [{
+                'targets': 0,
+                'width': '1%',
+                'className': 'dt-body-center',
+                'render': function (data, type, full, meta) {
+                    return '<input type="checkbox" name="id[]" value="'
+                       + $('<div/>').text(data).html() + '">';
+                }
+            }],
+        });
+
+        $('#tblBaggage-select-all').on('click', function () {
+            var rows = table.rows({ 'search': 'applied' }).nodes();
+            $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        });
+        // Handle click on checkbox to set state of "Select all" control
+        $('#tblBaggage tbody').on('change', 'input[type="checkbox"]', function () {
+            // If checkbox is not checked
+            if (!this.checked) {
+                var el = $('#tblBaggage-select-all').get(0);
+                // If "Select all" control is checked and has 'indeterminate' property
+                if (el && el.checked && ('indeterminate' in el)) {
+                    // Set visual state of "Select all" control
+                    // as 'indeterminate'
+                    el.indeterminate = true;
+                }
+            }
+        });
+
+        $(function () {
+            $("form").kendoValidator();
+            var counter = 1;
+            $.ajax({
+                url: '@Url.Action("GetMissingCN35", "Receipt")',
+                type: 'post',
+                data: { mawb: '@ViewBag.MAWB' },
+                success: function (data) {
+                    if (data.isValid == null || typeof data.isValid !== "undefined") {
+                        $.each(data.Data, function () {
+                            var item = this;
+                            table.row.add([
+                            'false',
+                            item.ID,
+                            ]).draw(false);
+                            counter++;
+                        });
+                    }
+                    else {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: data.exceptionErrorMessage,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                    }
+                },
+                complete: function (data) {
+                    //
+                },
+                error: function (xhr) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: xhr.responseText,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                    $("#packingNo").focus().select();
+                }
+            });
+        });
+        $("#btnClose").click(function (e) {
+            parent.$('#addnewbaggagePopUp').data('kendoWindow').close();
+        });
+        // get selected checkboxes
+        function getSelectedItems() {
+            var selchbox = [];
+            var ch = $('#tblBaggage').find('tbody input[type=checkbox]');
+            ch.each(function () {
+                var $this = $(this);
+                if ($this.is(':checked')) {
+                    sel = true; //set to true if there is/are selected row
+                    cn35 = $(this).closest("tr").find("td")[1].innerText
+                    if (cn35.split("|").length == 1)
+                        selchbox.push(cn35);
+                    else
+                        selchbox.push(cn35.split("|")[1]);
+                }
+            });
+
+            return selchbox;
+        }
+        $("#btnSave").click(function (e) {
+            selItems = getSelectedItems();
+            if (selItems.length == 0)
+            {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Validate",
+                    message: "You have to select at least one item.",
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+                return;
+            }
+            $.ajax({
+                url: '@Url.Action("AddBaggageItems", "Receipt")',
+                type: 'post',
+                data: { bagId: selItems, uldNo: '@ViewBag.ContainerNo', mawb: '@ViewBag.MAWB' },
+                success: function (data) {
+                    if (data.isValid == null) {
+                        parent.$('#addnewbaggagePopUp').data('kendoWindow').close();
+                    }
+                    else {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: data.exceptionErrorMessage,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                    }
+                },
+                error: function (xhr) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: xhr.responseText,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+            });
+        });
+    });
+</script>

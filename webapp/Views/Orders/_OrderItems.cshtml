@@ -1,0 +1,270 @@
+﻿@using WMSPortal.Core.Model;
+@model OrdersViewModel
+
+
+<script type="text/javascript">
+    function orderItemReadData() {
+        return {
+            orderKey: $("#OrderKey").val()
+        };
+    }
+    function getStorerCode() {
+        var combobox = $("#StorerKey").data("kendoComboBox");
+        return {
+            companyCode: combobox.value()
+        };
+    }
+
+    function deleteOrderItem(e) {
+        e.preventDefault ? e.preventDefault() : e.returnValue = false;
+        var grid = $("#orderItemsGrid").data("kendoGrid");
+        $.when(kendo.ui.ExtOkCancelDialog.show({
+            title: "OK/Cancel",
+            message: "Are you sure you want to delete the selected record(s)",
+            icon: "k-ext-question"
+        })
+        ).done(function (response) {
+            var item = grid.dataItem($(e.currentTarget).closest("tr"));
+
+            if (response.button == "OK") {
+                grid.dataSource.remove(item)
+                grid.dataSource.sync()
+            }
+        });
+
+    }
+    function Sku_ItemChanged(e) {
+        var object = this.dataItem(this.select());
+        //get the closest grid
+        var grid = this.element.closest('[data-role=grid]').data("kendoGrid");
+        var tr = this.element.closest("tr");// get the row element which contains the DropDownList widget
+        var dataItem = grid.dataItem(tr); // get the associated Model
+
+        if (object === undefined)
+            dataItem.set("Notes1", "");
+        else
+        {
+            if (object.DESCR != null)
+                dataItem.set("Notes1", object.DESCR.trim());
+        }
+    }
+    function orderItemsGrid_onEdit(e) {
+        var combobox = $("#StorerKey").data("kendoComboBox");
+        if (e.model.isNew()) {
+            e.model.set("OrderKey", $('#OrderKey').val());
+            e.model.set("StorerKey", combobox.value());
+        }
+    }
+    function orderItemsGrid_onDataBound(e) {
+        var lockStatus = '@Model.Flag3';
+      
+        var grid = $("#orderItemsGrid").data("kendoGrid");
+        var gridData = grid.dataSource.view();
+
+       
+            for (var i = 0; i < gridData.length; i++) {
+                var currentUid = gridData[i].uid;
+
+                var currenRow = grid.table.find("tr[data-uid='" + currentUid + "']");
+                var editButton = $(currenRow).find(".k-grid-edit");
+                var deleteButton = $(currenRow).find(".k-grid-Delete");
+                editButton.hide();
+                deleteButton.hide();
+                if (lockStatus == "1") {
+                    editButton.hide();
+                    deleteButton.hide();
+                }
+                else {
+                    editButton.show();
+                    deleteButton.show();
+                }
+        }
+    }
+    function OrdersItem_Error(e) {
+        if (e.errors) {
+            var message = ""; //"Errors:\n";
+            var status = "";
+            $.each(e.errors, function (key, value) {
+                status = key;
+                if ('errors' in value) {
+                    $.each(value.errors, function () {
+                        message += this + "\n";
+                    });
+                }
+            });
+
+            var grid = $("#orderItemsGrid").data("kendoGrid");
+            grid.one("dataBinding", function (e) {
+                e.preventDefault();
+            });
+            if (status == "ex_delete") {
+                grid.cancelChanges();
+            }
+
+            if (status.indexOf("ex") > -1) {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Error",
+                    message: message,
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+            }
+        }
+    }
+
+</script>
+
+@helper ToolbarTemplate()
+{
+    <a class="k-button k-button-icontext k-grid-add"><span><img src="~/Content/img/add.png" /></span> Add new item</a>
+    <a class="k-button k-button-icontext allocateitems" href="/"><span><img src="~/Content/img/reply.png" /></span> Allocate Items</a>
+    <a class="k-button k-button-icontext inventorypicking" href="/"><span><img src="~/Content/img/folder_files.png" /></span> Pick from inventory</a>
+}
+<div class="row" id="orderItems">
+    <div class="col-sm-12">
+        <div class="col-sm-12">
+            <h4><span class="glyphicon glyphicon-import"></span>&nbsp;Order Lines</h4>
+        </div>
+    </div>
+    <div class="col-sm-12">
+        <div class="col-sm-11">
+            <div style="width:100%">
+                @(Html.Kendo().Grid<OrderDetail>()
+                    .Name("orderItemsGrid")
+                    .Scrollable(s => s.Height(250))
+                    .Navigatable()
+                    .Pageable()
+                    .Columns(c =>
+                    {
+                        c.Bound(x => x.OrderKey).Width(250).Hidden();
+                        c.Bound(x => x.StorerKey).Hidden();
+                        c.Bound(x => x.OrderLineNumber).Title("Line").Width(50);
+                        c.Bound(x => x.Sku).Title("Sku").EditorTemplateName("SkuEditor").Width(150);
+                        c.Bound(x => x.Notes1).Title("Description").Width(250) ;
+                        c.Bound(x => x.OpenQty).Title("Open").Width(50).EditorTemplateName("Integer")
+                            .Format("{0:n0}").HtmlAttributes(new { style = "text-align:right;" })
+                            .ClientFooterTemplate("<div style='text-align:right;'>#=sum#</div>").Format("{0:n0}");
+                        c.Bound(x => x.QtyAllocated).Title("Allocated").Width(50)
+                            .Format("{0:n0}").HtmlAttributes(new { style = "text-align:right;" })
+                            .ClientFooterTemplate("<div style='text-align:right;'>#=sum#</div>").Format("{0:n0}");
+                        c.Bound(x => x.QtyPicked).Title("Picked").Width(50)
+                            .Format("{0:n0}").HtmlAttributes(new { style = "text-align:right;" })
+                            .ClientFooterTemplate("<div style='text-align:right;'>#=sum#</div>").Format("{0:n0}");
+                        //c.Bound(x => x.Sku).Title("Sku").ClientTemplate("#=getSkuInfo(Sku) #").EditorTemplateName("SkuEditor").Width(250);
+                        //c.Bound(x => x.Notes1).Title("Description").Width(100);
+                        c.Command(command =>
+                        {
+                            command.Edit();
+                            command.Custom("Delete").Click("deleteOrderItem");
+                        }).Width(200);
+
+                    })
+                    .ToolBar(toolbar =>
+                    {
+                        toolbar.Template(@<text>
+                            @ToolbarTemplate()
+                        </text>);
+                    })
+                    .Editable(editable => editable.DisplayDeleteConfirmation(false))
+                    .Events(events => events.Edit("orderItemsGrid_onEdit").DataBound("orderItemsGrid_onDataBound"))
+                    .DataSource(s => s
+                    .Ajax()
+                    .Model(model =>
+                        {
+                            //model.Field(p => p.OrderKey).Editable(false);
+                            model.Id(p => p.OrderLineNumber);
+                            //model.Field(p => p.Notes1).Editable(false);
+                            model.Field(p => p.OrderLineNumber).Editable(false);
+                            model.Field(p => p.QtyAllocated).Editable(false);
+                            model.Field(p => p.QtyPicked).Editable(false);
+                            //model.Field(p => p.StorerKey).Editable(false);
+                        })
+                    .Read(read => read.Action("GetOrderDetail", "Orders").Data("orderItemReadData").Type(HttpVerbs.Get))
+                    .Create(create => create.Action("AddOrderItem", "Orders").Type(HttpVerbs.Post))
+                    .Update(update => update.Action("UpdateOrderItem", "Orders").Type(HttpVerbs.Post))
+                    .Destroy(create => create.Action("DeleteOrderItem", "Orders").Type(HttpVerbs.Post))
+                    .ServerOperation(true)
+                    .Aggregates(aggregates =>
+                    {
+                        aggregates.Add(p => p.OpenQty).Sum();
+                        aggregates.Add(p => p.QtyAllocated).Sum();
+                        aggregates.Add(p => p.QtyPicked).Sum();
+                    })
+                    .Events(events =>
+                        events.Error("OrdersItem_Error")
+                        )
+                    .PageSize(20)
+                    )
+                )
+
+            </div>
+        </div>
+    </div>
+    <script>
+        $("#orderItemsGrid").on("click", ".allocateitems", function (e) {
+            e.preventDefault();
+            $.when(kendo.ui.ExtOkCancelDialog.show({
+                title: "OK/Cancel",
+                message: "Do you want to allocate all items",
+                icon: "k-ext-question"
+            })
+            ).done(function (response) {
+                if (response.button == "OK") {
+                    var model = '@Html.Raw(Json.Encode(Model))';
+                    var isNew = "@Model.IsNew";
+
+                    $.ajax({
+                        url: '@Url.Action("AllocateOrderItems", "Orders")',
+                        type: 'post',
+                        data: $('form').serialize(),
+                        success: function (data) {
+                            if (data.isValid == null) {
+                                $.smallBox({
+                                    title: "Allocate Order ",
+                                    content: "<i class='fa fa-clock-o'></i> <i> Your order has been allocated successfully</i>",
+                                    color: "#296191",
+                                    iconSmall: "fa fa-thumbs-up bounce animated",
+                                    timeout: 4000
+                                });
+                                $("#orderItemsGrid").data("kendoGrid").dataSource.read();
+                                $("#orderItemsGrid").data("kendoGrid").refresh();
+                            }
+                            else {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: data.exceptionErrorMessage,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        },
+                        error: function (xhr) {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: xhr.responseText,
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                        }
+                    });
+                }
+            });
+        });
+
+        $("#orderItemsGrid").on("click", ".inventorypicking", function (e) {
+            e.preventDefault();
+            var win = $("#allocateInventoryPopUp").data("kendoWindow");
+            if (win != null) {
+                var url = '@Url.Action("SelectStockBalance", "StockBalance")?orderKey=' + $("#OrderKey").val();
+                win.refresh(url);
+                win.open();
+                win.center();
+            }
+        });
+    </script>
+
+</div>
+

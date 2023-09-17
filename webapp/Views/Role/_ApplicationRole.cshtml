@@ -1,0 +1,129 @@
+﻿@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+@using WMSPortal.ViewModels;
+@model RoleListViewModel
+
+<style>
+    #applicationRoleGrid .k-group-cell {
+        background-color: transparent;
+    }
+</style>
+
+<script type="text/javascript">
+   
+    function applicationRoleGrid_onDataBound(arg) {
+       
+        var rows = this.table.find("tr:not(.k-grouping-row)");
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var model = this.dataItem(row);
+            var allowCell = $($(row).find("td")[1]);
+            allowCell.addClass("k-group-cell");
+            var readCell = $($(row).find("td")[2]);
+            readCell.addClass("k-group-cell");
+            var readwriteCell = $($(row).find("td")[3]);
+            readwriteCell.addClass("k-group-cell");
+            var allowapprove = $($(row).find("td")[4]);
+            allowapprove.addClass("k-group-cell");
+           
+            $("#applicationRoleGrid .k-update").parent().hide();
+        }
+    }
+    function additionalInfo() {
+        var roleId = document.getElementById("Id").value;
+        return {
+            roleId: roleId
+        }
+    }
+</script>
+
+<div>
+
+    @(Html.Kendo().Grid<ApplicationRoleViewModel>()
+        .Name("applicationRoleGrid")
+        .AutoBind(false)
+        .Editable(editable => editable.Mode(GridEditMode.InCell))
+        .Columns(columns =>
+        {
+            columns.Bound(o => o.ApplicationName);
+            columns.Bound(o => o.IsAllowAccess)
+                .ClientTemplate("<input type='checkbox' data-bind='checked: IsAllowAccess' #= IsAllowAccess ? checked='checked' : '' #  class='ob-allowaccess' ></input>")
+                .Filterable(false)
+                .Sortable(false)
+                .Width(50)
+                .HtmlAttributes(new { style = "text-align:center" });
+            //.HeaderTemplate("<input type='checkbox' id='IsAllowAccess-SelectAll'  /><span> A</span>");
+            columns.Bound(o => o.IsRead)
+                .ClientTemplate("<input type='checkbox' #= IsRead ? checked='checked' : '' #  class='ob-read' ></input>")
+                .Filterable(false)
+                .Sortable(false)
+                .Width(50)
+                .HtmlAttributes(new { style = "text-align:center" });
+            //.HeaderTemplate("<input type='checkbox' id='IsRead-SelectAll'  /><span> R</span>");
+            columns.Bound(o => o.IsReadWrite)
+                .ClientTemplate("<input type='checkbox' #= IsReadWrite ? checked='checked' : '' #  class='ob-readwrite' ></input>")
+                .Filterable(false)
+                .Sortable(false)
+                .Width(50)
+                .HtmlAttributes(new { style = "text-align:center" });
+            //.HeaderTemplate("<input type='checkbox' id='IsReadWrite-SelectAll'  /><span> R/W</span>");
+            //columns.Bound(o => o.IsAllowApprove)
+            //    .ClientTemplate("<input type='checkbox' #= IsAllowApprove ? checked='checked' : '' #  style=#=data.IsShowApproval==1?'visibility:visible':'visibility:hidden'# class='ob-allowapprove' ></input>")
+            //    .Filterable(false)
+            //    .Sortable(false)
+            //    .Width(50)
+            //    .HtmlAttributes(new { style = "text-align:center" });
+            //.HeaderTemplate("<input type='checkbox' id='IsAllowApprove-SelectAll'  /><span> AP</span>");
+            //columns.Bound(o => o._IsNew);
+        })
+        .ToolBar(toolbar =>
+        {
+            toolbar.Save();
+        })
+        .Scrollable()
+        .Events(events => events.DataBound("applicationRoleGrid_onDataBound"))
+        .DataSource(dataSource => dataSource
+        .Ajax()
+        .Batch(true)
+         .Model(model =>
+            {
+                model.Id(p => p.ApplicationId);
+            })
+        .Update("UpdateApplicationRoles", "ApplicationRole")
+        .Read(read => read.Action("GetApplicationRoles", "ApplicationRole").Data("additionalInfo"))
+        //.ServerOperation(true)
+       )
+)
+    
+</div>
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+       
+        var grid = $("#applicationRoleGrid").data("kendoGrid");
+      
+        grid.tbody.on("change", ".ob-allowaccess", function (e) {
+            var row = $(e.target).closest("tr");
+            var item = grid.dataItem(row);
+            item.set("IsAllowAccess", $(e.target).is(":checked") ? 1 : 0);
+        });
+        grid.tbody.on("change", ".ob-read", function (e) {
+            var row = $(e.target).closest("tr");
+            var item = grid.dataItem(row);
+            item.set("IsRead", $(e.target).is(":checked") ? 1 : 0);
+        });
+        grid.tbody.on("change", ".ob-readwrite", function (e) {
+            var row = $(e.target).closest("tr");
+            var item = grid.dataItem(row);
+            item.set("IsReadWrite", $(e.target).is(":checked") ? 1 : 0);
+        });
+        grid.tbody.on("change", ".ob-allowapprove", function (e) {
+            var row = $(e.target).closest("tr");
+            var item = grid.dataItem(row);
+            item.set("IsAllowApprove", $(e.target).is(":checked") ? 1 : 0);
+        });
+    });
+    
+</script>

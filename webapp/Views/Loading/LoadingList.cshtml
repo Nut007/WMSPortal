@@ -1,0 +1,416 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+
+}
+
+<div id="content">
+
+    <script>
+        function Fields_Select(e) {
+            var target;
+            var dataItem = this.dataItem(e.item);
+            if (dataItem.Value == "l.LOADING_DATE" )
+                target = ".date-filter";
+            else
+                target = ".textfilter";
+            VisibleFilter(target);
+        }
+
+        function loadingLevel_Select(e) {
+            VisibleColumns($("#sectionView").data("kendoDropDownList").value());
+            searchLoadingShipment();
+        }
+
+        function additionalInfo() {
+            var datetimestart = $("#loadingStartdate").data("kendoDatePicker");
+            var datetimestop = $("#loadingStopdate").data("kendoDatePicker");
+
+            if (datetimestart.value() == null) {
+                var todayDate = kendo.toString(kendo.parseDate(new Date()), 'dd/MM/yyyy');
+
+                $("#loadingStartdate").data("kendoDatePicker").value(todayDate);
+                $("#loadingStopdate").data("kendoDatePicker").value(todayDate);
+            }
+
+            var cat = $("#loadingFields").data("kendoDropDownList");
+            var sectionView = $("#sectionView").data("kendoDropDownList").value();
+
+            if (cat.value() == "l.LOADING_DATE" )
+                txtValue1 = kendo.toString(datetimestart.value(), "yyyy-MM-dd") + ' ' + '00:00:00';
+            else
+                txtValue1 = document.getElementById('loadingfilter').value;
+
+            var txtValue2 = kendo.toString(datetimestop.value(), "yyyy-MM-dd") + ' ' + '23:59:59';
+
+            var column = cat.value();
+            var value1 = txtValue1;
+            var value2 = txtValue2;
+            var userId = '@currentUser.UserName';
+            return {
+                column: column,
+                value1: value1,
+                value2: value2,
+                sectionView: sectionView,
+                userId: userId
+            }
+        }
+
+        function loadingGrid_onError(e) {
+            if (e.errors) {
+                var message = ""; //"Errors:\n";
+                var status = "";
+                $.each(e.errors, function (key, value) {
+                    status = key;
+                    if ('errors' in value) {
+                        $.each(value.errors, function () {
+                            message += this + "\n";
+                        });
+                    }
+                });
+
+
+                if (status.indexOf("ex") > -1) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: message,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+            }
+        }
+
+
+
+    </script>
+    <style>
+        #loadingGrid .k-grid-toolbar {
+            padding: .6em 1.3em;
+        }
+
+        .category-label {
+            vertical-align: middle;
+            padding-right: .5em;
+        }
+
+        #category {
+            vertical-align: middle;
+        }
+
+        .toolbar {
+            float: right;
+        }
+
+        a {
+            cursor: pointer;
+        }
+
+        #loadingGrid > .k-grid-header > div > table,
+        #loadingGrid > .k-grid-content > table {
+            width: 100% !important;
+        }
+    </style>
+    <!-- ui-dialog -->
+    <div id="dialog_error" title="Error">
+    </div>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Loading List</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="col-sm-12">
+                <div class="form-inline pull-right-sm">
+
+                    @Html.Label("Search By  ")
+                    <div class="form-group">
+                        @(Html.Kendo().DropDownList()
+                        .Name("loadingFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Loading No",
+                                Value = "l.LOADINGNO"
+                            },
+                            new SelectListItem() {
+                                Text = "Packing No",
+                                Value = "ld.PACKINGNO"
+                            },
+                             new SelectListItem() {
+                                Text = "Loading Date",
+                                Value = "l.LOADING_DATE"
+                            },
+                            new SelectListItem() {
+                                Text = "Plate No",
+                                Value = "l.PLATE_NO"
+                            },
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("Fields_Select");
+                        })
+                        .Value("l.LOADING_DATE")
+                        .HtmlAttributes(new { style = "width:185px" })
+                        )
+                    </div>
+                    <div class="form-group">
+                        <input id="loadingfilter" type="text" class="k-textbox textfilter" style="width: 185px;" placeholder="Type to filter..." />
+                        <div class="date-filter">
+                            @(Html.Kendo().DatePicker()
+                            .Name("loadingStartdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .ParseFormats(new string[] { "dd/MM/yyyy" })
+                            .HtmlAttributes(new { type = "text", @style = "width: 105px;" })
+                            )
+                            @(Html.Kendo().DatePicker()
+                            .Name("loadingStopdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .ParseFormats(new string[] { "dd/MM/yyyy" })
+                            .HtmlAttributes(new { type = "text", @style = "width: 105px;" })
+                            )
+                        </div>
+                    </div>
+                    <button type="button" id="searchLoadingShipment" class="k-button k-primary" onclick="searchLoadingShipment()">Search</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<LoadingListViewModel>()
+            .Name("loadingGrid")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.LOADINGNO).Width(80);
+                columns.Bound(o => o.LOADINGNO).ClientTemplate(" # if (1==1) { #" +
+                        "<a href='" + Url.Action("LoadingManagment", "Loading") + "?LoadingNo=#= LOADINGNO #" + "'><span class=\"fa fa-pencil-square-o fa-2x\"></span></a>" +
+                        "# } else { #" +
+                        "<span class=\"fa fa-pencil-square-o fa-2x\"></span>" +
+                        "# } #").Width(17).Title("");
+                columns.Bound(o => o.Status).ClientTemplate(" # if (Status=='Open') { #" +
+                        "<div style='display:inline-block; width:50px' class='label label-warning label-as-badge'>#= Status #" + "</div>" +
+                        "# } else if (Status=='Released')  { #" +
+                        "<div style='display:inline-block; width:50px' class='label label-primary label-as-badge'>#= Status #" + "</div>" +
+                        "# } else { #" +
+                        "<div style='display:inline-block; width:50px' class='label label-success label-as-badge'>#= Status #" + "</div>" +
+                        "# } #").Width(35).Title("Status");
+                //columns.Bound(o => o.LOADINGDATE).ClientTemplate("#= ConvertDateFormat(LOADINGDATE) #").Width(50);
+                columns.Bound(o => o.LOADING_DATE).ClientTemplate("#= ConvertDateFormat(LOADING_DATE) #").Width(50);
+                columns.Bound(o => o.PLATE_NO).Width(80);
+                columns.Bound(o => o.PACKINGNO).Width(80).Hidden();
+            })
+            .Excel(ex => ex.AllPages(true).FileName("LoadingReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+                    <div class="toolbar">
+
+                        <label class="category-label" for="category">Section View :</label>
+                        @(Html.Kendo().DropDownList()
+                        .Name("sectionView")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Header",
+                                Value = "1"
+                            },
+                            new SelectListItem() {
+                                Text = "Detail",
+                                Value = "2"
+                            },
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("loadingLevel_Select");
+                        })
+                        .Value("Header")
+                        .HtmlAttributes(new { style = "width:185px" })
+                        )
+                    </div>
+                </text>);
+            })
+                                .Pageable()
+                                .Sortable()
+                                .Scrollable()
+                                .Excel(excel => excel
+                                    .FileName("LoadingReport.xlsx")
+                                    .Filterable(true)
+                                    .ProxyURL(Url.Action("ExportToExcel", "Orders"))
+                                )
+                                .DataSource(dataSource => dataSource
+                                .Ajax()
+                                .Events(events => events.Error("loadingGrid_onError"))
+                                .PageSize(50)
+                                .Model(model =>
+                                    {
+                                        model.Id(p => p.LOADINGNO);
+                                        model.Id(p => p.ITEMNO);
+                                    })
+                                .Read(read => read.Action("GetLoadingList", "Loading").Data("additionalInfo"))
+                                .ServerOperation(false)
+                                )
+            )
+
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            VisibleFilter(".date-filter");
+            ResizeGrid();
+
+            /*
+           * CONVERT DIALOG TITLE TO HTML
+           * REF: http://stackoverflow.com/questions/14488774/using-html-in-a-dialogs-title-in-jquery-ui-1-10
+           */
+
+            $.widget("ui.dialog", $.extend({}, $.ui.dialog.prototype, {
+                _title: function (title) {
+                    if (!this.options.title) {
+                        title.html("&#160;");
+                    } else {
+                        title.html(this.options.title);
+                    }
+                }
+            }));
+
+            $('#dialog_error').dialog({
+                autoOpen: false,
+                width: 600,
+                resizable: false,
+                modal: true,
+                title: "<div class='widget-header'><h4><i class='fa fa-warning'></i> Report</h4></div>",
+                buttons: [{
+                    html: "<i class='fa fa-times'></i>&nbsp; Close",
+                    "class": "btn btn-danger",
+                    click: function () {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+
+        $("#show_col1").on("click", function () {
+            var grid = $("#loadingGrid").data("kendoGrid");
+            grid.showColumn(0);
+        });
+
+        $("#hide_col1").on("click", function () {
+            var grid = $("#loadingGrid").data("kendoGrid");
+            grid.hideColumn(0);
+        });
+        function ResizeGrid() {
+            var gridElement = $("#loadingGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+
+        function searchLoadingShipment() {
+            $("#loadingGrid").data("kendoGrid").dataSource.read();
+        }
+
+        function VisibleFilter(target) {
+            $(".date-filter").hide();
+            $(".textfilter").hide();
+            $(target).show();
+        }
+        function LoadingDetails(loading) {
+            var action = '@Url.Action("LoadingInfo", "Loading")';
+
+            var html = kendo.format("<a href='{0}?loadingNo={1}'>" + loading.LOADINGNO + "</a>",
+                action,
+                loading.LoadingNo
+            );
+
+            return html;
+        }
+
+        function VisibleColumns(cat) {
+            var grid = $("#loadingGrid").data("kendoGrid");
+            grid.hideColumn("LOADINGNO");
+            grid.hideColumn("LOADING_DATE");
+            grid.hideColumn("PACKINGNO");
+            grid.hideColumn("PLATE_NO");
+            
+            if (cat == "1") {
+                grid.showColumn("LOADINGNO");
+                grid.showColumn("LOADING_DATE");
+                grid.showColumn("PLATE_NO");
+            }
+            else {
+                grid.showColumn("LOADINGNO");
+                grid.showColumn("LOADING_DATE");
+                grid.showColumn("PACKINGNO");
+                grid.showColumn("PLATE_NO");
+            }
+        }
+        function ExportExcelLoadingTransection(loading) {
+            var d = new Date();
+            var ai = {
+                loadingNo: loadingNo
+            };
+            $.ajax({
+                url: '@Url.Action("ExportLoadingTransectionReport", "Loading")',
+                type: 'POST',
+                data: JSON.stringify(ai),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    if (data.Result) {
+                        if (data.RecordCount == 0) {
+                            $('#dialog_error').html("<p>" + data.ErrorMessage + "</p>");
+                            $('#dialog_error').dialog('open');
+                        }
+                        else {
+
+                            var url = '@Url.Action("Download", "CustomsReport")?fileGuid=' + data.FileGuid + '&filename=' + data.FileName;
+                            window.location = url;
+
+                            var n = d.getSeconds();
+                            $.smallBox({
+                                title: "Export loading transection completed. ",
+                                content: "<i class='fa fa-clock-o'></i> <i>" + n + " Sec...</i>",
+                                color: "#296191",
+                                iconSmall: "fa fa-thumbs-up bounce animated",
+                                timeout: 4000
+                            });
+                        }
+                    }
+                    else {
+                        $('#dialog_error').html("<p>" + data.ErrorMessage + "</p>");
+                        $('#dialog_error').dialog('open');
+                    }
+                    $("#inboundExportExcel").removeAttr('disabled');
+                },
+                error: function (xhr) {
+                    $('#dialog_error').html("<p>" + xhr.responseText + "</p>");
+                    $('#dialog_error').dialog('open');
+                    $("#inboundExportExcel").removeAttr('disabled');
+                }
+            });
+        }
+    </script>
+
+
+</div>

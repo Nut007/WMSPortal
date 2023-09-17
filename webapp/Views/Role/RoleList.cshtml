@@ -1,0 +1,383 @@
+﻿@using WMSPortal.ViewModels;
+
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+
+<div id="content">
+    <div id="editRoleWindow"></div>
+
+    <style>
+        #content,
+        #roleGrid {
+            height: 100%;
+        }
+
+        .k-grid tbody .k-button {
+            min-width: 0px;
+        }
+
+        .k-grid-Copy span {
+            background-image: url('../Images/delete.png');
+            width: 14px;
+            height: 14px;
+            line-height: 14px;
+            display: inline-block;
+            background-position: -96px -48px;
+        }
+    </style>
+
+    <script>
+        var _IsNew;
+        var _IsDirty;
+        function roleGridSelectAll(isSelected) {
+            var grid = $("#roleGrid").data("kendoGrid");
+            var view = grid.dataSource.view();
+
+            for (var i = 0; i < view.length; i++) {
+                grid.tbody.find("tr[data-uid='" + view[i].uid + "']")
+                       .find(".chk")
+                       .attr("checked", (!isSelected ? true : false))
+                       .trigger("click");
+            }
+        }
+        function onClick(e) {
+            GetRolesSelected();
+        }
+        function GetRolesSelected() {
+            var ids = [];
+            var grid = $("#roleGrid").data("kendoGrid");
+            var view = grid.dataSource.view();
+
+            for (var i = 0; i < view.length; i++) {
+                var row = grid.table.find("tr[data-uid='" + view[i].uid + "']");
+                var checkbox = $(row).find(".chk");
+                if (checkbox.is(":checked")) {
+                    ids.push(view[i].Id);
+                }
+            }
+            return ids;
+        }
+        function DeleteSelection(e) {
+            e.preventDefault;
+            var roles = GetRolesSelected();
+            if (roles.length == 0) return;
+            $('#dialog_Role_delete').dialog('open');
+        }
+        function DeleteRole() {
+            var roles = GetRolesSelected();
+            $.ajax({
+                url: "@Url.Action("DeleteRoles", "Role")",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ roleIDs: roles }),
+                success: function (data, status, xhr) {
+                    var dataSource = $("#roleGrid").data().kendoGrid.dataSource;
+                    $.each(roles, function (index, value) {
+                        var item = dataSource.get(value);
+                        dataSource.remove(item);
+                    });
+                    $("#roleGrid").data("kendoGrid").dataSource.page(1);
+                },
+                error: function (xhr, status, err) {
+                    if (xhr.status == 400) {
+                        alert("success..");
+                    }
+                    else {
+                        alert("most probably HTTP 5xx");
+                    }
+                }
+            });
+        }
+        function ResizeroleGrid() {
+            $('#roleGrid-SelectAll').attr('checked', false);
+            var gridElement = $("#roleGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+
+        function roleGrid_Databound() {
+            checkedIds = [];
+            $('#roleGrid-SelectAll').attr('checked', false); // Checks it
+            ResizeroleGrid();
+        }
+
+        function AddSummitRoleClickEvent() {
+
+            $('#summitRole').click(function () {
+                //var uid = $('.k-edit-form-container').closest('[data-role=window]').data('uid');
+                //var model = $('#roleGrid').data('kendoGrid').dataSource.getByUid(uid);
+                //alert(model.get('_IsNew'));
+                var roleId = document.getElementById("Id").value;
+                var roleName = document.getElementById("Name").value;
+                var serverName = document.getElementById("ServerName").value;
+                var databaseName = document.getElementById("DatabaseName").value;
+                var userName = document.getElementById("UserName").value;
+                var password = document.getElementById("Password").value;
+
+                var roles = $("#applicationRoleGrid").data().kendoGrid._data;
+                var approles = { "Id": roleId, "Name": roleName, "ServerName": serverName, "DatabaseName": databaseName, "UserName": userName, "Password": password, "_IsNew": _IsNew, "ApplicationRoles": [] };
+                for (i = 0; i < roles.length; i++) {
+                    if (roles[i].dirty) {
+                        //roles[i].IsNew = roles[i].isNew();
+                        approles.ApplicationRoles.push(roles[i]);
+                    }
+                }
+
+                $.ajax({
+                    url: "@Url.Action("CreateOrUpdateRole", "Role")",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(approles),
+                    success: function (data, status, xhr) {
+                        var uid = $('.k-edit-form-container').closest('[data-role=window]').data('uid');
+                        var model = $('#roleGrid').data('kendoGrid').dataSource.getByUid(uid);
+                        if (model.get('Id') === 0) {
+                            model.set('Id', data.Data[0].Id);
+                        };
+                        model.dirty = false;
+                        if (!_IsNew) {
+                            $('#roleGrid').data('kendoGrid').dataSource.pushUpdate(model);
+                        }
+                        else {
+                            $('#roleGrid').data('kendoGrid').dataSource.sync();
+                        }
+                        $('#roleGrid').data('kendoGrid').refresh();
+
+                    },
+                    error: function (xhr, status, err) {
+                        if (xhr.status == 400) {
+                            alert("success..");
+                        }
+                        else {
+                            alert("most probably HTTP 5xx");
+                        }
+                    }
+                });
+
+            });
+        }
+
+        function roleGrid_Edit(e) {
+
+            var kendoWindow = e.container.data("kendoWindow");
+            _IsDirty = e.model.dirty;
+            _IsNew = e.model.isNew();
+            if (e.model.isNew()) {
+                //set options using the setOptions method
+                kendoWindow.setOptions({
+                    title: "Create user group"
+                });
+            } else {
+                //set options using the setOptions method
+                kendoWindow.setOptions({
+                    title: "Edit user group"
+                });
+            }
+
+            e.container.find(".k-edit-buttons.k-state-default").css("width", "435px");
+            $('.k-grid-update').css('display', 'none');
+            var cancel = $(e.container).parent().find(".k-grid-cancel-changes");
+            $(cancel).html('<span class="k-icon k-cancel"></span>Cancel Changed');
+            $(".k-edit-buttons.k-state-default").prepend('<a class="k-button k-button-icontext k-primary" id="summitRole"><span class="k-icon k-edit"></span>Save</a>');
+            AddSummitRoleClickEvent();
+            // User for refresh application roles data in grid
+            $("#applicationRoleGrid").data("kendoGrid").dataSource.read();
+
+        }
+
+        $(window).on("resize", function () {
+            ResizeroleGrid();
+        });
+
+        $(document).ready(function () {
+
+            var window = $("#editRoleWindow");
+
+            // Custom grid command : cancel
+
+            $("#roleGrid-SelectAll").bind("click", function () {
+                roleGridSelectAll(this.checked);
+            });
+            $("#findRole").kendoButton({
+                icon: "funnel"
+            });
+            $("#deleteRole").kendoButton({
+                icon: "close"
+            });
+            $("#textButton").kendoButton({
+                click: onClick
+            });
+            $("#rolefilter").keyup(function (event) {
+                if (event.keyCode == 13) {
+                    $("#findRole").click();
+                }
+            });
+            $('#findRole').click(function (e) {
+                e.preventDefault();
+                FindRole();
+            });
+            function FindRole() {
+                var field = $("#roleFields").data("kendoDropDownList").value();
+                var value = $("#rolefilter").val();
+                $.ajax({
+                    url:  "@Url.Action("GetRoles", "Role")",
+                    type: 'POST',
+                    contentType: "application/json;charset=utf-8",
+                    data: JSON.stringify({ column: field, value: value }),
+                    dataType: "json",
+                    success: function (data) {
+                        var grid = $('#roleGrid').getKendoGrid();
+                        grid.dataSource.data(data);
+                    }
+                });
+
+            }
+            $.widget("ui.dialog", $.extend({}, $.ui.dialog.prototype, {
+                _title: function (title) {
+                    if (!this.options.title) {
+                        title.html("&#160;");
+                    } else {
+                        title.html(this.options.title);
+                    }
+                }
+            }));
+
+            $('#dialog_Role_delete').dialog({
+                autoOpen: false,
+                width: 300,
+                resizable: false,
+                modal: true,
+                title: "<div class='widget-header'><h4><i class='fa fa-warning'></i> Delete User Group</h4></div>",
+                buttons: [{
+                    html: "<i class='fa fa-trash-o'></i>&nbsp; Delete",
+                    "class": "btn btn-danger",
+                    click: function () {
+                        DeleteRole();
+                        $(this).dialog("close");
+                    }
+                }, {
+                    html: "<i class='fa fa-times'></i>&nbsp; Cancel",
+                    "class": "btn btn-default",
+                    click: function () {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+        });
+
+    </script>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Connections</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("roleFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Connection Name",
+                                Value = "Name"
+                            }
+                        })
+                        .Value("Name")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="rolefilter" type="text" class="k-textbox" style="width: 185px;" placeholder="Type to filter..." />
+                </div>
+                <button type="button" id="findRole">Search</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<RoleListViewModel>()
+            .Name("roleGrid")
+            .EnableCustomBinding(true)
+            .ToolBar(toolbar =>
+            {
+                toolbar.Create().Text("Create");
+                toolbar.Custom().Text("Delete").Url("#").HtmlAttributes(new { id = "deleteRole", onclick = "DeleteSelection(event)" });
+            })
+            .Columns(columns =>
+            {
+                columns.Command(
+                    command =>
+                    {
+                        command.Edit().UpdateText("Save").CancelText("Cancel").Text("Edit");
+                    }
+                ).Width(40);
+                columns.Bound(o => o.Id)
+                    .ClientTemplate("<input type='checkbox' id='selectRecord' class='chk' value='#=Id#' />")
+                    .HeaderTemplate("<input type='checkbox' id='roleGrid-SelectAll'  />")
+                    .Width(15)
+                    .Sortable(false)
+                    .Filterable(false);
+                columns.Bound(o => o.Name).Width(100);
+                columns.Bound(o => o.ServerName).Width(100);
+                columns.Bound(o => o.DatabaseName).Width(100);
+                columns.Bound(o => o.UserName).Width(100);
+                //columns.Bound(o => o.Id).Width(50);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("RoleList_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(tools => tools.Excel())
+            .Editable(editable => editable
+            .Mode(GridEditMode.PopUp)
+            .Window(w => w.Width(460)
+            .Title("Create/Edit User Group")
+             )
+            .DisplayDeleteConfirmation(false)
+            .TemplateName("RoleListViewModel"))
+            .Pageable()
+            .Events(events => events.DataBound("roleGrid_Databound")
+                .Edit("roleGrid_Edit")
+                )
+            .Sortable()
+            .Scrollable()
+            .Selectable(select => select.Mode(GridSelectionMode.Single))
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .PageSize(20)
+            .Model(model => model.Id(p => p.Id))
+            .Read(read => read.Action("GetAllRoles", "Role"))
+            .Create(create => create.Action("RefreshRole", "Role"))
+            .Update(update => update.Action("RefreshRole", "Role"))
+            .ServerOperation(false)
+            )
+            )
+        </div>
+
+        <div id="dialog_Role_delete" title="Delete">
+            <p>
+                Do you want to delete this record?
+            </p>
+        </div>
+
+    </div>
+    <script>
+        function additionalInfo() {
+            var cat = $("#roleFields").data("kendoDropDownList");
+            var txtValue = document.getElementById('rolefilter').value;
+
+            var column = cat.value();
+            var value = txtValue;
+            return {
+                column: column,
+                value: value
+            }
+        }
+    </script>
+
+</div>

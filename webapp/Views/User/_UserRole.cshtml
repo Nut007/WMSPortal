@@ -1,0 +1,87 @@
+﻿@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+@using WMSPortal.ViewModels;
+ 
+
+<style>
+    #userRoleGrid .k-group-cell {
+        background-color: transparent;
+    }
+</style>
+
+<script type="text/javascript">
+    function userRoleGrid_onDataBound(arg) {
+
+        var rows = this.table.find("tr:not(.k-grouping-row)");
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var model = this.dataItem(row);
+            var allowCell = $($(row).find("td")[1]);
+            allowCell.addClass("k-group-cell");
+            
+
+            $("#userRoleGrid .k-update").parent().hide();
+        }
+    }
+    function additionalInfo() {
+        var userId = document.getElementById("UserID").value;
+        return {
+            userId: userId
+        }
+    }
+</script>
+
+<div>
+    @(Html.Kendo().Grid<UserRoleViewModel>()
+        .Name("userRoleGrid")
+        .AutoBind(false)
+        .Editable(editable => editable.Mode(GridEditMode.InCell))
+        .Columns(columns =>
+        {
+            columns.Bound(o => o.Name);
+            columns.Bound(o => o.IsSelected)
+                .ClientTemplate("<input type='checkbox' data-bind='checked: IsSelected' #= IsSelected ? checked='checked' : '' #  class='ob-allowaccess' ></input>")
+                .Filterable(false)
+                .Sortable(false)
+                .Width(50)
+                .HtmlAttributes(new { style = "text-align:center" });
+            //columns.Bound(o => o._IsNew);
+        })
+        .ToolBar(toolbar =>
+        {
+            toolbar.Save();
+        })
+        .Scrollable()
+        .Events(events => events.DataBound("userRoleGrid_onDataBound"))
+        .DataSource(dataSource => dataSource
+        .Ajax()
+        .Batch(true)
+         .Model(model =>
+            {
+                model.Id(p => p.UserId);
+            })
+        .Update("UpdateUserRoles", "UserRole")
+        .Read(read => read.Action("GetUserRoles", "UserRole").Data("additionalInfo"))
+       )
+    )
+
+
+
+
+</div>
+
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+        var grid = $("#userRoleGrid").data("kendoGrid");
+
+        grid.tbody.on("change", ".ob-allowaccess", function (e) {
+            var row = $(e.target).closest("tr");
+            var item = grid.dataItem(row);
+            item.set("IsSelected", $(e.target).is(":checked") ? 1 : 0);
+        });
+       
+    });
+</script>

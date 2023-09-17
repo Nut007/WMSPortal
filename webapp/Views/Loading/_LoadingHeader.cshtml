@@ -1,0 +1,50 @@
+﻿
+@model LoadingViewModel
+@{
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+<div class="row" id="orderHeader">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="col-sm-12 padding-top-5">
+                <h4 class="header-caption padding-left-10">
+                    <span id="loadingCaption">Loading No :</span>
+                </h4>
+            </div>
+        </div>
+    </div>
+    <hr class="faded-modi" />
+    <div class="col-sm-12">
+        <div class="col-sm-3">
+            <div class="col-sm-12">
+                <div class="col-sm-12">
+                    @Html.HiddenFor(m => m.LOADINGNO)
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="plateNo">Plate No :</label>
+                @Html.TextBoxFor(m => m.PLATE_NO, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+                @Html.ValidationMessageFor(m => m.PLATE_NO)
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="form-group">
+                <label for="loadingDate">Loading Date :</label>
+                @(Html.Kendo().DatePickerFor(m => m.LOADING_DATE).HtmlAttributes(new { type = "text", @style = "width: 100%;max-width:100%" }).Culture("en-AU"))
+                @Html.ValidationMessageFor(m => m.LOADING_DATE, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                <label for="containerNo">Container No :</label>
+                @Html.TextBoxFor(m => m.CONTAINER_NO, new { @class = "k-textbox", @style = "width: 100% ; max-width: 100%;" })
+            </div>
+        </div>
+    </div>
+</div>
+
+<script language="javascript" type="text/javascript">
+    $(window).load(function () {
+        $("#loadingCaption").text("Loading No : " + '@Model.LOADINGNO' );
+    });
+
+</script>

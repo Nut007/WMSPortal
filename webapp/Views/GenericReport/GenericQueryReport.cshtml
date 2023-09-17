@@ -1,0 +1,104 @@
+﻿@model GeneralQueryReportViewModel
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<!-- MAIN CONTENT -->
+<div id="content">
+    <style>
+        .select2-hidden-accessible { display: none !important; visibility: hidden !important; }
+       
+    </style>
+    <script>
+     
+      $( function() {
+          // create DatePicker from input HTML element
+          $(".datepicker").kendoDatePicker({
+              value: new Date(),
+              format: "dd/MM/yyyy" 
+          });
+          $(".datetimepicker").kendoDateTimePicker({
+              value: new Date(),
+              dateInput: true,
+              format: "dd/MM/yyyy hh:mm tt" //format is used to format the value of the widget and to parse the input.
+          });
+          $(".search-query").select2();
+         
+          $('#button').click(function () {
+              alert(buildRequestStringData($('#mainDiv')));
+          });
+         
+      });
+      function buildRequestStringData(form) {
+          var select = form.find('select'),
+              input = form.find('input'),
+              requestString = '{';
+          debugger
+          for (var i = 0; i < select.length; i++) {
+              requestString += '"' + $(select[i]).attr('id') + '": "' + $(select[i]).val() + '",';
+          }
+          if (select.length > 0) {
+              requestString = requestString.substring(0, requestString.length - 1);
+          }
+          for (var i = 0; i < input.length; i++) {
+              if ($(input[i]).attr('type') !== 'checkbox') {
+                  requestString += '"' + $(input[i]).attr('id') + '":"' + $(input[i]).val() + '",';
+              } else {
+                  if ($(input[i]).attr('checked')) {
+                      requestString += '"' + $(input[i]).attr('id') + '":"' + $(input[i]).val() + '",';
+                  }
+              }
+          }
+          if (input.length > 0) {
+              requestString = requestString.substring(0, requestString.length - 1);
+          }
+          requestString += '}';
+          //alert($('#select1').val());
+          return requestString;
+      }
+    </script>
+
+    <div id="mainDiv">
+             @foreach (var row in Model.FilterCollection)
+             {
+                <div class="form-group">
+                    <label for=@row.Name>@row.Caption</label>
+                    @if (row.ControlType == "text")
+                    {
+                        <input type="text" id="@row.Name" class="form-control" />
+                    }
+                    else if (row.ControlType == "date")
+                    {
+                        <input id="@row.Name" class="datepicker" value="10/10/2011" title="datepicker" style="width: 100%" />
+                    }
+                    else if (row.ControlType == "datetime")
+                    {
+                        <input id="@row.Name" class="datetimepicker" title="datepicker" style="width: 100%" />
+                    }
+                    else if (row.ControlType == "select")
+                    {
+                        <select class="search-query" style="width: 100%" id=@row.Name multiple="multiple">
+                            @foreach (var lst in row.Options)
+                            {
+                                <option value=@lst.Value>@lst.Text</option>
+                            }
+                        </select>
+                    }
+                    else if (row.ControlType == "radio")
+                    {
+                        <div>
+                            @foreach (var lst1 in row.Options)
+                            {
+                                <input type="radio" name="@row.Name" class="form-control" />@lst1.Text
+                            }
+                        </div>
+
+                    }
+                </div>
+             }
+        @*<input type="radio" name="radio-1" />Yes
+        <input type="radio" name="radio-1" />No <br />*@
+        
+    </div>
+    <input type="button" value="Get values!" id="button" />
+</div>
+<!-- END MAIN CONTENT -->

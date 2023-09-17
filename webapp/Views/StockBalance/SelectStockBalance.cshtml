@@ -1,0 +1,240 @@
+﻿@using WMSPortal.ViewModels;
+@*@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}*@
+@{
+    Layout = "~/Views/Shared/_EmptyLayout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+<div id="contentSelectStock">
+
+    <style>
+        /*#selectStockGrid .k-grid-toolbar {
+            padding: .6em 1.3em;
+        }*/
+
+        .category-label {
+            vertical-align: middle;
+            padding-right: .5em;
+        }
+
+        #category {
+            vertical-align: middle;
+        }
+
+        .toolbar {
+            float: right;
+        }
+
+        a {
+            cursor: pointer;
+        }
+    </style>
+
+    <script>
+        function filterInfo() {
+            var column = $("#stockFields").data("kendoDropDownList").value();
+            var value = $("#stockfilter").val();
+            var userId = '@currentUser.UserName';
+            return {
+                column: column,
+                value: value,
+                userId : userId
+            }
+        }
+        function orderInfo() {
+            //var orderkey = "TEST00001";
+            return {
+                orderKey: getQueryVariable("orderKey")
+            }
+        }
+
+        function SelectStockBalance_Error(e) {
+            if (e.errors) {
+                var message = ""; 
+                var status = "";
+                $.each(e.errors, function (key, value) {
+                    status = key;
+                    if ('errors' in value) {
+                        $.each(value.errors, function () {
+                            message += this + "\n";
+                        });
+                    }
+                });
+
+                if (status.indexOf("ex") > -1) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: message,
+                        icon: "k-ext-error",
+                        width: 550,
+                        height: 200
+                    }))
+                }
+            }
+        }
+
+        function onRequestEnd(e) {
+            //Check request type
+            if (e.type == "create" || e.type == "update") {
+                //check for errors in the response
+                if (e.response == null || e.response.Errors == null) {
+                    formSubmit();
+                }
+            }
+        }
+    </script>
+
+    <div class="row padding-top-15 padding-bottom-5 padding-left-10" id="header-content">
+
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Inventory Balance</h4>
+        </div>
+
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("stockFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Sku",
+                                Value = "l.Sku"
+                            },
+                            new SelectListItem() {
+                                Text = "Description",
+                                Value = "DESCR"
+                            },
+                            new SelectListItem() {
+                                Text = "Storer",
+                                Value = "l.StorerKey"
+                            },
+                            new SelectListItem() {
+                                Text = "Lot",
+                                Value = "l.Lot"
+                            },
+                            new SelectListItem() {
+                                Text = "Location",
+                                Value = "l.Loc"
+                            },
+                            new SelectListItem() {
+                                Text = "Id",
+                                Value = "l.Id"
+                            },
+                        })
+
+                        .Value("Sku")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="stockfilter" type="text" class="k-textbox textfilter" style="width: 150px;" placeholder="Type to filter..." value=@ViewBag.SkuFilter />
+                </div>
+                <button type="button" id="searchInventory" class="k-button k-primary" onclick="SearchInventory()">Search</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+
+            @(Html.Kendo().Grid<StockBalanceViewModel>()
+            .Name("selectStockGrid")
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.StorerKey).Width(100).Hidden();
+                columns.Bound(o => o.Sku).Width(100);
+                columns.Bound(o => o.SkuDescription).Width(200);
+                columns.Bound(p => p.QtyAvaliable).Width(80).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(p => p.QtyOrder).Width(80).Width(50).EditorTemplateName("Integer")
+                            .Format("{0:n0}").HtmlAttributes(new { style = "text-align:right;" });
+
+            })
+            .ToolBar(toolbar =>
+            {
+                { 
+                    //toolbar.Create(); 
+                    toolbar.Save().Text("Allocate Items"); 
+                }
+                @*toolbar.Save();
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+
+                </text>);*@
+            })
+            .Editable(editable => editable.Mode(GridEditMode.InCell))
+            .Excel(ex => ex.AllPages(true).FileName("InventoryBalance_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .Pageable()
+            .Filterable(ftb => ftb.Mode(GridFilterMode.Row))
+            .Sortable()
+            .Scrollable()
+            .Navigatable()
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .Batch(true)
+            .Read(read => read.Action("GetInventoryGroupBySku", "StockBalance").Data("filterInfo"))
+            .Update(read => read.Action("BatchAllocateItems", "Orders").Data("orderInfo"))
+            .PageSize(100)
+            .Events(events => events.Error("SelectStockBalance_Error").RequestEnd("onRequestEnd"))
+            .Model(model =>
+            {
+                model.Id(p => p.Sku);
+                model.Field(p => p.StorerKey).Editable(false);
+                model.Field(p => p.Sku).Editable(false);
+                model.Field(p => p.SkuDescription).Editable(false);
+                model.Field(p => p.QtyAvaliable).Editable(false);
+            })
+            .ServerOperation(false)
+            )
+            )
+
+        </div>
+    </div>
+
+    <script>
+
+        $(document).ready(function () {
+            ResizeGrid();
+        });
+
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        function getQueryVariable(variable) {
+            var query = window.location.search.substring(1);
+            var vars = query.split("&");
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split("=");
+                if (pair[0] == variable) { return pair[1]; }
+            }
+            return (false);
+        }
+        function SearchInventory() {
+            $("#selectStockGrid").data("kendoGrid").dataSource.read();
+        }
+
+        function receiptDetailGrid_Databound() {
+            ResizeGrid();
+        }
+
+        function ResizeGrid() {
+            var gridElement = $("#selectStockGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 210;
+            dataArea.height(gridHeight);
+        }
+        function formSubmit() {
+            parent.$('#allocateInventoryPopUp').data('kendoWindow').close();
+        }
+    </script>
+
+</div>

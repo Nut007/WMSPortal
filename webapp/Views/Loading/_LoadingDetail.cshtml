@@ -1,0 +1,216 @@
+﻿@using WMSPortal.Core.Model;
+@model LoadingViewModel
+
+<script type="text/javascript">
+
+    function loadingItemReadData() {
+        return {
+            loadingNo: $("#LOADINGNO").val()
+        };
+    }
+
+    function deleteLoadingItem(e) {
+        e.preventDefault ? e.preventDefault() : e.returnValue = false;
+        var grid = $("#loadingItemsGrid").data("kendoGrid");
+        $.when(kendo.ui.ExtOkCancelDialog.show({
+            title: "OK/Cancel",
+            message: "Are you sure you want to delete the selected record(s)",
+            icon: "k-ext-question"
+        })
+        ).done(function (response) {
+            var item = grid.dataItem($(e.currentTarget).closest("tr"));
+
+            if (response.button == "OK") {
+                grid.dataSource.remove(item)
+                grid.dataSource.sync()
+            }
+        });
+    }
+
+    function loadingItemsGrid_onEdit(e) {
+        if (e.model.isNew()) {
+            e.model.set("LOADINGNO", $('#LOADINGNO').val());
+        }
+    }
+
+    function loadingItemsGrid_onDataBound(e) {
+        var grid = $("#loadingItemsGrid").data("kendoGrid");
+        var gridData = grid.dataSource.view();
+
+
+        for (var i = 0; i < gridData.length; i++) {
+            var currentUid = gridData[i].uid;
+
+            var currenRow = grid.table.find("tr[data-uid='" + currentUid + "']");
+            var editButton = $(currenRow).find(".k-grid-edit");
+            var deleteButton = $(currenRow).find(".k-grid-Delete");
+            editButton.show();
+            deleteButton.show();
+
+        }
+    }
+
+    function LoadingItem_Error(e) {
+        if (e.errors) {
+            var message = ""; //"Errors:\n";
+            var status = "";
+            $.each(e.errors, function (key, value) {
+                status = key;
+                if ('errors' in value) {
+                    $.each(value.errors, function () {
+                        message += this + "\n";
+                    });
+                }
+            });
+
+            var grid = $("#loadingItemsGrid").data("kendoGrid");
+            grid.one("dataBinding", function (e) {
+                e.preventDefault();
+            });
+            if (status == "ex_delete") {
+                grid.cancelChanges();
+            }
+
+            if (status.indexOf("ex") > -1) {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Error",
+                    message: message,
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+            }
+        }
+    }
+    function CreateLoadingItem()
+    {
+        //var grid = $("#loadingItemsGrid").data("kendoGrid");
+        //var newItem = grid.dataSource.insert({}, 0);
+        //grid.dataSource.page(1);
+        //grid.select($("[data-uid='" + newItem.uid + "']"));
+        var loadingNo = $('#LOADINGNO').val();
+        var packingNo = $('#packingNo').val();
+        var item = { "LOADINGNO": loadingNo, "PACKINGNO": packingNo }
+       
+        $.ajax({
+            url: '@Url.Action("CreateLoadingDetail", "Loading")',
+            type: 'post',
+            data: item,
+            success: function (data) {
+                if (data.isValid == null) {
+                    var grid = $('#loadingItemsGrid').data('kendoGrid');
+                    var dataSource = grid.dataSource;
+                    dataSource.add(data.Data[0]);
+                    dataSource.sync();
+                    $('#packingNo').val('');
+                    $('#packingNo').focus().select();
+                }
+                else {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: data.exceptionErrorMessage,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                    .done(function (response) {
+                        $('#packingNo').focus().select();
+                    });
+                  
+                }
+            },
+            error: function (xhr) {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Error",
+                    message: xhr.responseText,
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+              
+            }
+        });
+    }
+</script>
+
+@helper ToolbarTemplate()
+{
+    <a class="k-button k-button-icontext k-grid-add"><span><img src="~/Content/img/add.png" /></span> Add new item</a>
+    <a class="k-button k-button-icontext allocateitems" href="/"><span><img src="~/Content/img/reply.png" /></span> Allocate Items</a>
+    <a class="k-button k-button-icontext inventorypicking" href="/"><span><img src="~/Content/img/folder_files.png" /></span> Pick from inventory</a>
+}
+<div class="row" id="loadingItems">
+    <div class="col-sm-12">
+        <div class="col-sm-3">
+            <div class="form-group">
+                <label>Packing No :</label>
+                <input id="packingNo" type="text" class="k-textbox" style="width: 185px;" />
+                <input type="button" id="btnSearch" value="Search" onclick="CreateLoadingItem();" />
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-12">
+        <div class="col-sm-12">
+            <h4><span class="glyphicon glyphicon-import"></span>&nbsp;Loading Items</h4>
+        </div>
+    </div>
+    <div class="col-sm-12">
+        <div class="col-sm-11">
+            <div style="width:100%">
+                @(Html.Kendo().Grid<LoadingDetail>()
+                    .Name("loadingItemsGrid")
+                    .Scrollable(s => s.Height(250))
+                    .Navigatable()
+                    .Pageable()
+                    .Columns(c =>
+                    {
+                        c.Bound(x => x.LOADINGNO).Width(250).Hidden();
+                        c.Bound(x => x.ITEMNO).Width(250);
+                        c.Bound(x => x.PACKINGNO).Title("Packing No").Width(50);
+
+                        c.Command(command =>
+                        {
+                            command.Edit();
+                            command.Custom("Delete").Click("deleteLoadingItem");
+                        }).Width(200);
+
+                    })
+                    .ToolBar(toolbar =>
+                    {
+                        toolbar.Template(@<text>
+                            @ToolbarTemplate()
+                        </text>);
+                    })
+                        .Editable(editable => editable.DisplayDeleteConfirmation(false))
+                        .Events(events => events.Edit("loadingItemsGrid_onEdit"))
+                        .DataSource(s => s
+                        .Ajax()
+                        .Model(model =>
+                            {
+                                model.Id(p => p.PACKINGNO);
+                            })
+                        .Read(read => read.Action("GetLoadingDetail", "Loading").Data("loadingItemReadData").Type(HttpVerbs.Get))
+                        .Create(create => create.Action("CreateLoadingDetail", "Loading").Type(HttpVerbs.Post))
+                        .Update(update => update.Action("UpdateLoadingDetail", "Loading").Type(HttpVerbs.Post))
+                        .Destroy(create => create.Action("DeleteLoadingDetail", "Loading").Type(HttpVerbs.Post))
+                        .ServerOperation(true)
+
+                        .Events(events =>
+                            events.Error("LoadingItem_Error")
+                            )
+                        .PageSize(20)
+                        )
+                )
+
+            </div>
+        </div>
+    </div>
+   
+</div>
+<script type="text/javascript">
+    $("#packingNo").on("keydown", function (event) {
+        if (event.keyCode == 13) {
+            $("#btnSearch").get(0).click();
+        }
+    });
+</script>

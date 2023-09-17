@@ -1,0 +1,241 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = "~/Views/Shared/_EmptyLayout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+@using (Html.BeginForm(new { id = "frmAddCN38" }))
+{
+    @Html.AntiForgeryToken()
+    <div class="row">
+        <div class="col-sm-12 margin-left-10 margin-top-5">
+            <div class="form-group">
+                <label>Mawb Number :</label><b>@ViewBag.MAWB</b>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 margin-left-10 margin-bottom-20">
+            <div class="form-group text-filter">
+                <label>CN38 Number :</label>
+                <input id="txtCN38" type="search" class="k-textbox" style="width: 185px;" />
+                <input type="button" class="btn-info btn" id="btnGetCN38" value="Get CN38" />
+                <button id ="btnSaveCN38" type="button" class="btn btn-success">
+                    <span class="glyphicon glyphicon glyphicon-floppy-saved"></span> Save CN38
+                </button>
+                <input type="button" class="btn btn-default " id="btnClose" value="Close window" />
+            </div>
+        </div>
+    </div>
+    <div class="row padding-left-10 padding-right-10">
+        <div class="col-sm-12">
+            <div class="col-sm-11">
+                <div class="widget-body no-padding">
+                    <table id="tblBaggageDetail" class="display projects-table table table-striped table-bordered table-hover" cellspacing="0" width="100%">
+                        <thead>
+                            <tr>
+                                <th><input name="select_all" value="1" id="tblBaggageDetail-select-all" type="checkbox" /></th>
+                                <th class="no">No#</th>
+                                <th>CN38</th>
+                                <th>Dispatch No</th>
+                                <th>Rec No</th>
+                                <th>Destination</th>
+                                <th>Gross Weight</th>
+                                <th>Tag No</th>
+                            </tr>
+                        </thead>
+                        <tfoot>
+                            <tr>
+                                <th colspan="7" style="text-align:right">Total:</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+   
+}
+<script type="text/Javascript">
+    $(document).ready(function () {
+        var table = $('#tblBaggageDetail').DataTable({
+            "footerCallback": function (row, data, start, end, display) {
+                var api = this.api(), data;
+
+                // Remove the formatting to get integer data for summation
+                var intVal = function (i) {
+                    return typeof i === 'string' ?
+                        i.replace(/[\$,]/g, '') * 1 :
+                        typeof i === 'number' ?
+                        i : 0;
+                };
+
+                // Total over all pages
+                total = api
+                    .column(6)
+                    .data()
+                    .reduce(function (a, b) {
+                        return intVal(a) + intVal(b);
+                    }, 0);
+
+                // Total over this page
+                pageTotal = api
+                    .column(6, { page: 'current' })
+                    .data()
+                    .reduce(function (a, b) {
+                        return intVal(a) + intVal(b);
+                    }, 0);
+
+                // Update footer
+                $(api.column(7).footer()).html(
+                    pageTotal + ' ( ' + total + ' total )'
+                );
+            },
+            'createdRow': function (row, data, index) {
+
+            },
+            'bFilter': true,
+            'columnDefs': [{
+                'targets': 0,
+                'searchable': false,
+                'orderable': false,
+                'width': '1%',
+                'className': 'dt-body-center',
+                'render': function (data, type, full, meta) {
+                    return '<input type="checkbox" name="id[]" value="'
+                       + $('<div/>').text(data).html() + '">';
+                }
+            }],
+            'order': [1, 'desc']
+        });
+        $(function () {
+            $("form").kendoValidator();
+        });
+        $("#btnClose").click(function (e) {
+            parent.$('#addCN38Popup').data('kendoWindow').close();
+        });
+        $("#btnSaveCN38").click(function (e) {
+            selItems = getSelectedItems();
+            $.ajax({
+                url: '@Url.Action("AddCN38Items", "Receipt")',
+                type: 'post',
+                data: { bagId: selItems, mawb: '@ViewBag.MAWB' },
+                success: function (data) {
+                    if (data.isValid == null) {
+                        table.clear().draw();
+                        parent.$('#addCN38Popup').data('kendoWindow').close();
+                    }
+                    else {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: data.exceptionErrorMessage,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                    }
+                },
+                complete: function (data) {
+                    //
+                },
+                error: function (xhr) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: xhr.responseText,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+            });
+        });
+        $("#btnGetCN38").click(function (e) {
+            var _this = $(this);
+            var _form = _this.closest("form");
+            var validatable = _form.kendoValidator().data("kendoValidator");
+            if (validatable.validate() === false) {
+                _form.submit();
+                return false;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetCN38Items", "Receipt")',
+                type: 'POST',
+                datatype: 'json',
+                data: {
+                    cn38: $('#txtCN38').val()
+                },
+                success: function (data) {
+                    if (data.isValid == null) {
+                        table.clear().draw();
+                        for (var i = 0; i < data.Data.length; i++) {
+                            table.row.add([
+                            'false',
+                            i + 1,
+                            data.Data[i].LOT,
+                            data.Data[i].DESPATCH_NO,
+                            data.Data[i].RECEPTACLE_NO,
+                            data.Data[i].DESTINATION_POST_CODE,
+                            data.Data[i].GROSS_WEIGHT,
+                            data.Data[i].ID
+                            ]).draw(false);
+                        }
+                    }
+                    else {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: data.exceptionErrorMessage,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                    }
+                },
+                complete: function (data) {
+                    //
+                },
+                error: function (xhr) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: xhr.responseText,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                    $("#CN38").focus().select();
+                }
+            });
+        });
+        $('#tblBaggageDetail-select-all').on('click', function () {
+            var rows = table.rows({ 'search': 'applied' }).nodes();
+            $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        });
+        $('#tblBaggageDetail tbody').on('change', 'input[type="checkbox"]', function () {
+            // If checkbox is not checked
+            if (!this.checked) {
+                var el = $('#tblBaggageDetail-select-all').get(0);
+                // If "Select all" control is checked and has 'indeterminate' property
+                if (el && el.checked && ('indeterminate' in el)) {
+                    // Set visual state of "Select all" control
+                    // as 'indeterminate'
+                    el.indeterminate = true;
+                }
+            }
+        });
+    });
+    // get selected checkboxes
+    function getSelectedItems() {
+        var selchbox = [];
+        var oTable = $("#tblBaggageDetail").dataTable();
+        $("input:checkbox", oTable.fnGetNodes()).each(function () {
+            var isChecked = $(this).is(":checked");
+            if (isChecked) {
+                transId = $(this).closest("tr").find("td")[7].innerText
+                selchbox.push(transId);
+            }
+        })
+       
+        return selchbox;
+    }
+</script>

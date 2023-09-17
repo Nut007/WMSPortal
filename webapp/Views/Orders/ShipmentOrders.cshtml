@@ -1,0 +1,404 @@
+﻿@using WMSPortal.ViewModels;
+@model OrdersViewModel
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+<script src="~/Scripts/jquery.validate.min.js"></script>
+<script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+@helper RenderOrderHeader()
+{
+    @Html.Partial("_OrderHeader", Model)
+}
+@helper RenderOrderDetail()
+{
+    @Html.Partial("_OrderItems", Model)
+}
+@using (Html.BeginForm(new { id = "frmShipmentOrder" }))
+{
+    @Html.AntiForgeryToken()
+
+    <div id="content">
+
+        <style>
+            #toolbar {
+                border-width: 0 0 1px;
+            }
+
+            .field-validation-valid {
+                display: none;
+            }
+
+            .fixed-ribbon #content {
+                padding-top: 40px;
+            }
+
+            #content {
+                padding: 0px 0px;
+                position: relative;
+            }
+        </style>
+
+        <script type="text/Javascript">
+
+            function onClose() {
+                $("#orderItemsGrid").data("kendoGrid").dataSource.read();
+                $("#orderItemsGrid").data("kendoGrid").refresh();
+            }
+
+            function displayValidationErrors(errors) {
+                var $ul = $('div.validation-summary-valid.text-danger > ul');
+
+                $ul.empty();
+                if (errors != undefined) {
+                    $.each(errors, function (idx, error) {
+                        $ul.append('<li>' + error.Message + '</li>');
+                    });
+                }
+            }
+
+            function showErrors(errorMessage, errormap, errorlist) {
+                var val = this;
+                errormap.forEach(function (error, index) {
+                    val.settings.highlight.call(val, error.element, val.settings.errorClass, val.settings.validClass);
+                    $(error.element).siblings("span.field-validation-valid, span.field-validation-error").html($("<span></span>").html(error.message)).addClass("field-validation-error").removeClass("field-validation-valid").show();
+                });
+            }
+
+            function fixValidFieldStyles($form, validator) {
+                var errors = {};
+                $form.find("input,select").each(function (index) {
+                    var name = $(this).attr("name");
+                    errors[name] = validator.errorsFor(name);
+                });
+                validator.showErrors(errors);
+                var invalidFields = $form.find("." + validator.settings.errorClass);
+                if (invalidFields.length) {
+                    invalidFields.each(function (index, field) {
+                        if ($(field).valid()) {
+                            $(field).removeClass(validator.settings.errorClass);
+                        }
+                    });
+                }
+            }
+
+        </script>
+
+        @(Html.Kendo().ToolBar()
+        .Name("orderToolBar")
+        .Items(items =>
+        {
+            items.Add().Type(CommandType.Button).Text("New").ImageUrl("../Content/img/new.png").Id("btnNewOrder");
+            items.Add().Type(CommandType.Button).Text("Save").ImageUrl("../Content/img/save.png").Id("btnSaveOrder");
+            items.Add().Type(CommandType.Button).Text("Delete").ImageUrl("../Content/img/delete.png").Id("btnDeleteOrder");
+            items.Add().Type(CommandType.Separator);
+            items.Add().Type(CommandType.Button).Text("Post Order").ImageUrl("../Content/img/finishedwork.png").Id("btnPostOrder");
+
+        })
+        )
+        @(Html.Kendo().Window()
+                .Name("allocateInventoryPopUp")
+                .Visible(false)
+                .Modal(true)
+                .Width(900)
+                .Height(600)
+                .Position(settings => settings.Top(70).Left(200))
+                .Title("Allocate Order ")
+                .Content("")
+        //.LoadContentFrom("SelectStockBalance", "StockBalance", new { orderKey = Model.OrderKey })
+                .Iframe(true)
+                .Animation(false)
+                .Resizable()
+                .Draggable()
+                .Events(events => events
+                .Close("onClose")
+            )
+        )
+
+        @*@Html.ValidationSummary(false,"",new { @class = "text-danger" })*@
+
+        @RenderOrderHeader()
+        @RenderOrderDetail()
+
+        <script type="text/Javascript">
+
+            $(document).ready(function () {
+
+                $(function () {
+                    $("form").kendoValidator();
+                });
+
+                ManageToolbar();
+
+                $("#dropdown").kendoDropDownList({
+                    optionLabel: "Paragraph",
+                    dataTextField: "text",
+                    dataValueField: "value",
+                    dataSource: [
+                        { text: "Heading 1", value: 1 },
+                        { text: "Heading 2", value: 2 },
+                        { text: "Heading 3", value: 3 },
+                        { text: "Title", value: 4 },
+                        { text: "Subtitle", value: 5 },
+                    ]
+                });
+
+                $("#btnPostOrder").click(function (e) {
+                    var toolbar = $("#orderToolBar").data("kendoToolBar"),
+                     button = $("#btnPostOrder"),
+                     isDisabled = button.hasClass("k-state-disabled");
+
+                    if (isDisabled)
+                        return false;
+
+                    toolbar.enable(button, false);
+
+                    $.when(kendo.ui.ExtOkCancelDialog.show({
+                        title: "OK/Cancel",
+                        message: "Do you want to post this order?",
+                        icon: "k-ext-question"
+                    })
+                      ).done(function (response) {
+                          if (response.button == "OK") {
+
+                              $.ajax({
+                                  url: '@Url.Action("PostOrder", "Orders")',
+                                  type: 'post',
+                                  data: { orderKey: $('#OrderKey').val() },
+                                  success: function (data) {
+                                      if (data.isValid == null) {
+                                          $('#Flag3').val("1");
+                                          ManageToolbar();
+                                      }
+                                      else {
+                                          $.when(kendo.ui.ExtAlertDialog.show({
+                                              title: "Error",
+                                              message: data.exceptionErrorMessage,
+                                              icon: "k-ext-error",
+                                              width: 500,
+                                              height: 120
+                                          }))
+                                          toolbar.enable(button, true);
+                                      }
+                                  },
+                                  error: function (xhr) {
+                                      $.when(kendo.ui.ExtAlertDialog.show({
+                                          title: "Error",
+                                          message: xhr.responseText,
+                                          icon: "k-ext-error",
+                                          width: 500,
+                                          height: 120
+                                      }))
+
+                                  }
+                              });
+                          } else {
+                              toolbar.enable(button, true);
+                          }
+                      });
+                });
+                $("#btnNewOrder").click(function () {
+                    var _this = $(this);
+                    var _form = _this.closest("form");
+                    var validator = _form.kendoValidator().data("kendoValidator");
+                    validator.hideMessages();
+                    ClearShipmentOrder();
+                });
+                $("#btnDeleteOrder").click(function () {
+                    var toolbar = $("#orderToolBar").data("kendoToolBar"),
+                      button = $("#btnDeleteOrder"),
+                      isDisabled = button.hasClass("k-state-disabled");
+
+                    if (isDisabled)
+                        return false;
+
+                    toolbar.enable(button, false);
+
+                    $.when(kendo.ui.ExtOkCancelDialog.show({
+                        title: "OK/Cancel",
+                        message: "Do you want to delete this item?",
+                        icon: "k-ext-question"
+                    })
+                     ).done(function (response) {
+                         if (response.button == "OK") {
+
+                             $.ajax({
+                                 url: '@Url.Action("DeleteShipmentOrder", "Orders")',
+                                 type: 'post',
+                                 data: { orderKey: $('#OrderKey').val() },
+                                 success: function (data) {
+                                     if (data.isValid == null) {
+                                         ClearShipmentOrder();
+                                     }
+                                     else {
+                                         $.when(kendo.ui.ExtAlertDialog.show({
+                                             title: "Error",
+                                             message: data.exceptionErrorMessage,
+                                             icon: "k-ext-error",
+                                             width: 500,
+                                             height: 120
+                                         }))
+                                     }
+                                 },
+                                 complete: function (data) {
+                                     toolbar.enable(button, true);
+                                 },
+                                 error: function (xhr) {
+                                     $.when(kendo.ui.ExtAlertDialog.show({
+                                         title: "Error",
+                                         message: xhr.responseText,
+                                         icon: "k-ext-error",
+                                         width: 500,
+                                         height: 120
+                                     }))
+
+                                 }
+                             });
+                         }
+                         else {
+                             toolbar.enable(button, true);
+                         }
+                     });
+                });
+                $("#btnSaveOrder").click(function (e) {
+                    var toolbar = $("#orderToolBar").data("kendoToolBar"),
+                        button = $("#btnSaveOrder"),
+                        isDisabled = button.hasClass("k-state-disabled");
+
+                    if (isDisabled)
+                        return false;
+
+                    var _this = $(this);
+                    var _form = _this.closest("form");
+                    var validatable = _form.kendoValidator().data("kendoValidator");
+                    if (validatable.validate() === false) {
+                        _form.submit();
+                        return false;
+                    }
+
+                    toolbar.enable(button, false);
+
+                    var model = '@Html.Raw(Json.Encode(Model))';
+                    var isNew = "@Model.IsNew";
+
+                    $.ajax({
+                        url: '@Url.Action("SaveShipmentOrder", "Orders")',
+                        type: 'post',
+                        data: $('form').serialize(),
+                        success: function (data) {
+                            if (data.isValid == null) {
+                                $('#OrderKey').val(data.Data[0].OrderKey);
+                                $("#orderCaption").text("Order Number : " + data.Data[0].OrderKey + "-" + data.Data[0].C_Company);
+                                $.smallBox({
+                                    title: "Success ",
+                                    content: "<i class='fa fa-clock-o'></i> <i> Save Completed</i>",
+                                    color: "#296191",
+                                    iconSmall: "fa-check-circle-o",
+                                    timeout: 4000
+                                });
+                                ManageToolbar();
+                            }
+                            else {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: data.exceptionErrorMessage,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        },
+                        complete: function (data) {
+                            toolbar.enable(button, true);
+                        },
+                        error: function (xhr) {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: xhr.responseText,
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                        }
+                    });
+                });
+            });
+
+            function ClearShipmentOrder() {
+                $(":input").each(function () {
+                    var $this = $(this);
+                    if ($this.is("input")) {
+                        $(this).val('');
+                    } else if ($this.is("textarea")) {
+                        $(this).val('');
+                    }
+                });
+                $("#orderCaption").text("Order Number : ");
+                $("#orderItemsGrid").data("kendoGrid").dataSource.data([]);
+                $("#orderItemsGrid").data("kendoGrid").dataSource.read();
+                ManageToolbar();
+            }
+
+            function allocateInventory() {
+                var win = $("#allocateInventoryPopUp").data("kendoWindow");
+                if (win != null) {
+                    var userId = '@currentUser.UserName';
+                    var url = '@Url.Action("SelectStockBalance", "StockBalance")?orderKey=' + $("#OrderKey").val() + "&userId=" + userId;
+                    win.refresh(url);
+                    win.open();
+                    win.center();
+                }
+            }
+            function ManageToolbar() {
+                var orderKey = $("#OrderKey").val();
+                var isPosted = ($("#Flag3").val() == '1');
+
+                var toolbar = $("#orderToolBar").data("kendoToolBar"),
+                newOrder = $("#btnNewOrder");
+                save = $("#btnSaveOrder");
+                deleteOrder = $("#btnDeleteOrder");
+                portOrder = $("#btnPostOrder");
+
+                toolbar.enable(newOrder, false);
+                toolbar.enable(save, false);
+                toolbar.enable(deleteOrder, false);
+                toolbar.enable(portOrder, false);
+
+                if (orderKey == "") {
+                    toolbar.enable(newOrder, true);
+                    toolbar.enable(save, true);
+                    toolbar.enable(deleteOrder, false);
+                    toolbar.enable(portOrder, false);
+                    $("#orderItemsGrid").find(".k-grid-toolbar").hide();
+                }
+                else {
+                    if (isPosted) {
+                        toolbar.enable(newOrder, true);
+                        $("#orderItemsGrid").find(".k-grid-toolbar").hide();
+                    }
+                    else {
+                        toolbar.enable(newOrder, true);
+                        toolbar.enable(save, true);
+                        toolbar.enable(deleteOrder, true);
+                        toolbar.enable(portOrder, true);
+                        $("#orderItemsGrid").find(".k-grid-toolbar").show();
+                    }
+                }
+
+            }
+
+        </script>
+
+        <script language="javascript">
+            window.onload = function (e) {
+                //$(function () {
+                //    $("form").kendoValidator();
+                //});
+                ManageToolbar();
+            };
+        </script>
+
+        <div id="window"></div>
+    </div>
+}

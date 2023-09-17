@@ -1,0 +1,239 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+<div id="receiptDetailWindow"></div>
+<div id="content">
+
+    @(Html.Kendo().Window()
+        .Name("DocsUploadWindow")
+        .Title("Customer")
+        .Draggable()
+        .Resizable()
+        .Width(736)
+        .Visible(false)
+        .Modal(true)
+    )
+
+    <style>
+        .k-grid td {
+            border-width: 0;
+        }
+    </style>
+
+    <script>
+        function inboundFields_Select(e) {
+            var target;
+            var dataItem = this.dataItem(e.item);
+            if (dataItem.Value == "ReceiptDate")
+                target = ".date-filter";
+            else
+                target = ".textfilter";
+            VisibleFilter(target);
+        }
+        function additionalInfo() {
+            var columnName;
+            var datetimestart = $("#inboundStartdate").data("kendoDatePicker");
+            var datetimestop = $("#inboundStopdate").data("kendoDatePicker");
+            //alert(datetimestart.value());
+            if (datetimestart.value() == null)
+            {
+                var todayDate = kendo.toString(kendo.parseDate(new Date()), 'dd/MM/yyyy');
+             
+                $("#inboundStartdate").data("kendoDatePicker").value(todayDate);
+                $("#inboundStopdate").data("kendoDatePicker").value(todayDate);
+            }
+         
+            var cat = $("#inboundFields").data("kendoDropDownList");
+         
+            if (cat != null) {
+                if (cat.value() == "ReceiptDate")
+                    txtValue1 = kendo.toString(datetimestart.value(), "yyyy-MM-dd") + ' ' + '00:00:00';
+                else
+                    txtValue1 = document.getElementById('inboundfilter').value;
+
+                var txtValue2 = kendo.toString(datetimestop.value(), "yyyy-MM-dd") + ' ' + '23:59:59';
+
+                columnName = cat.value();
+            }
+            else {
+                columnName = "ReceiptDate";
+            }
+
+            var column = columnName;
+            var value1 = txtValue1;
+            var value2 = txtValue2;
+            var userId = '@currentUser.UserName';
+            return {
+                column: column,
+                value1: value1,
+                value2: value2,
+                userId: userId
+            }
+        }
+    </script>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Inbound Shipment</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("inboundFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Received Date",
+                                Value = "ReceiptDate"
+                            },
+                            new SelectListItem() {
+                                Text = "ReceiptKey",
+                                Value = "r.ReceiptKey"
+                            },
+                            new SelectListItem() {
+                                Text = "Import Entry",
+                                Value = "r.Reference1"
+                            },
+                            new SelectListItem() {
+                                Text = "Purchase Order Number",
+                                Value = "r.PoKey"
+                            },
+                            new SelectListItem() {
+                                Text = "Warehouse Reference",
+                                Value = "WarehouseReference"
+                            }
+                            
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("inboundFields_Select");
+                        })
+                        .Value("ReceiptDate")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="inboundfilter" type="text" class="k-textbox textfilter" style="width: 185px;" placeholder="Type to filter..." />
+                    <div class="date-filter">
+                        @(Html.Kendo().DatePicker()
+                            .Name("inboundStartdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .HtmlAttributes(new { @style = "width: 105px;" })
+                        )
+                        @(Html.Kendo().DatePicker()
+                            .Name("inboundStopdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .HtmlAttributes(new { @style = "width: 105px;" })
+                        )
+                    </div>
+                </div>
+                <button type="button" id="searchInboundShipment" class="k-button k-primary" onclick="SearchInboundShipment()">Search</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<ReceiptListViewModel>()
+            .Name("inboundGrid")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                //columns.Bound(o => o.WarehouseKey).Width(30);
+                columns.Bound(o => o.ReceiptDate).ClientTemplate("#= ConvertDateTimeFormat(ReceiptDate) #").Width(70);
+                columns.Bound(o => o.ReceiptKey).ClientTemplate("#= receiptDetails(data) #").Width(55);
+                columns.Bound(o => o.ReceiptType).Width(40);
+                columns.Bound(o => o.StorerKey).Width(50);
+                //columns.Bound(o => o.ReceiptKey).ClientTemplate("<a href='\\#' onclick='receiptDetailWindow(#= ReceiptKey #)'>" + "#= ReceiptKey #" + "</a>").Title("ReceiptKey").Width(55);
+                columns.Bound(o => o.PoKey).Width(50);
+                columns.Bound(o => o.Reference1).Width(70);
+                //columns.Bound(o => o.ExternReceiptKey).Width(50);
+                columns.Bound(o => o.WarehouseReference).Width(70);
+                columns.Bound(o => o.Sku).Width(80);
+                columns.Bound(o => o.SkuDescription).Width(100);
+                columns.Bound(o => o.QtyExpected).Width(50).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.QtyReceived).Width(50).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.UnitPrice).Width(50);
+                columns.Bound(o => o.NetWgt).Width(50);
+                columns.Bound(o => o.GrossWgt).Width(50);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("InboundReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(tools => tools.Excel())
+            .Pageable()
+            .Sortable()
+            .Scrollable()
+            //.Selectable(select => select.Mode(GridSelectionMode.Single))
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .PageSize(50)
+            .Model(model => model.Id(p => p.ReceiptKey))
+            .Read(read => read.Action("GetInboundShipment", "Receipt").Data("additionalInfo"))
+            .ServerOperation(false)
+            )
+            )
+
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            VisibleFilter(".date-filter");
+            ResizeGrid();
+            SearchInboundShipment();
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        function ResizeGrid() {
+            var gridElement = $("#inboundGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+        function SearchInboundShipment()
+        {
+            $("#inboundGrid").data("kendoGrid").dataSource.read();
+        }
+        
+        function receiptDetailWindow(receiptKey) {
+            var url = "/Receipt/ReceiptInfo?receiptKey=" + receiptKey;
+            var window = $("#DocsUploadWindow").kendoWindow(
+                {
+                    iframe: true,
+                    width: "980px",
+                    height: "400px",
+                    actions: ["Pin", "Maximize", "Minimize", "Close"],
+                    content: url,
+                    type: "GET"
+                });
+            window.data("kendoWindow").open();
+        }
+       
+        function VisibleFilter(target) {
+            $(".date-filter").hide();
+            $(".textfilter").hide();
+            $(target).show();
+        }
+        function receiptDetails(receipt) {
+            var action = '@Url.Action("ReceiptInfo", "Receipt")';
+
+            var html = kendo.format("<a href='{0}?receiptKey={1}'>" + receipt.ReceiptKey + "</a>",
+                action,
+                receipt.ReceiptKey
+            );
+
+            return html;
+        }
+    </script>
+
+</div>

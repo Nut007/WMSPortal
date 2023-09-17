@@ -1,0 +1,38 @@
+﻿@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<div id="content">
+    <button id="inboundExportExcel" class="btn btn-primary">
+        <i class="fa fa-file-excel-o"></i>
+        นำข้อมูลออกเป็น Excel File
+    </button>
+    <a href="@Url.Action("ExportCustomsInboundTransReport")"> Get Report in PDF</a>
+    <script>
+        $(document).ready(function () {
+
+            $('#inboundExportExcel').click(function (e) {
+                e.preventDefault();
+
+                $("#inboundExportExcel").prop("disabled", true);
+
+                $.ajax({
+                    url: '@Url.Action("ExportCustomsInboundTransReport", "CustomsReport")',
+                    type: 'POST',
+                    //data: JSON.stringify(ai),
+                    contentType: "application/json; charset=utf-8",
+                    success: function (data) {
+                        var url = '@Url.Action("DownloadPdf", "CustomsReport")?fileGuid=' + data.FileGuid + '&filename=' + data.FileName;
+                        window.location = url;
+                    },
+                    error: function (xhr) {
+                        $('#dialog_error').html("<p>" + xhr.responseText + "</p>");
+                        $('#dialog_error').dialog('open');
+                        $("#inboundExportExcel").removeAttr('disabled');
+                    }
+                });
+
+            });
+        });
+
+    </script>
+</div>

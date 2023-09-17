@@ -1,0 +1,367 @@
+﻿@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<!-- MAIN CONTENT -->
+<div id="content" class="right_col">
+    <link href="https://cdn.webdatarocks.com/latest/webdatarocks.min.css" rel="stylesheet" />
+    <link href="https://cdn.webdatarocks.com/latest/theme/lightblue/webdatarocks.min.css" rel="stylesheet" />
+
+    <script type="text/javascript">
+        var pivot;
+        function getJSONPendingOrders() {
+            $.ajax({
+                type: "GET",
+                url: '@Url.Action("GetPivotOrders", "Orders")',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (data) {
+                    LoadData(data);
+                    return data;
+                },
+                error: function (req, status, err) {
+                    console.log('something went wrong', status, err);
+                }
+            }
+            );
+        }
+        var pivotTableReportComplete = false;
+        var googleChartsLoaded = false;
+
+        function createGoogleChart() {
+            if (googleChartsLoaded) {
+                debugger
+                pivot.googlecharts.getData({
+                    type: "pie"
+                },
+                    drawChart,
+                    drawChart
+                );
+            }
+        }
+
+        function onGoogleChartsLoaded() {
+            googleChartsLoaded = true;
+            if (pivotTableReportComplete) {
+                createGoogleChart();
+            }
+        }
+
+        function drawChart(_data) {
+            var data = google.visualization.arrayToDataTable(_data.data);
+
+            var options = {
+                title: "Sum Quantity",
+                legend: {
+                    position: 'top'
+                },
+                is3D: true
+            };
+
+            var chart = new google.visualization.PieChart(document.getElementById('googlechart-container'));
+            chart.draw(data, options);
+        }
+        function customizeToolbar(toolbar) {
+            // get all tabs
+            var tabs = toolbar.getTabs();
+            toolbar.getTabs = function () {
+                // There will be two new tabs at the beginning of the toolbar 
+                tabs.unshift({
+                    id: "wdr-tab-toggle-graph",
+                    title: "Default",
+                    handler: newtabHandlerDefault,
+                    icon: this.icons.format
+                });
+                return tabs;
+            }
+           
+            var newtabHandlerDefault = function () {
+                setDefaultTheme();
+            };
+        }
+        function setDefaultTheme() {
+            $('#graph-pane').toggle();
+           
+        }
+
+        function LoadData(data) {
+           pivot = new WebDataRocks({
+                container: "#wdr-component",
+                beforetoolbarcreated: customizeToolbar,
+                toolbar: true,
+                report: {
+                    dataSource: {
+                        data: data
+                    },
+                    formats: [{
+                        name: "qtyallocated",
+                        maxDecimalPlaces: 2,
+                        thousandsSeparator: ",",
+                        maxSymbols: 20,
+                        textAlign: "right"
+                    }],
+                    slice: {
+                        rows: [{
+                            uniqueName: "Status"
+                        }],
+                        columns: [{
+                            uniqueName: "OrderDate.Year"
+                        },
+                        {
+                            uniqueName: "OrderDate.Month"
+                        },
+                        {
+                            uniqueName: "OrderDate.Day"
+                        }],
+                        measures: [{
+                            uniqueName: "QtyAllocated",
+                            aggregation: "sum",
+                            format: "qtyallocated"
+                        }]
+                    }
+                },
+                reportcomplete: function () {
+                    pivot.off("reportcomplete");
+                    pivotTableReportComplete = true;
+                    createGoogleChart();
+                }
+            });
+        }
+    </script>
+
+    <div class="row">
+        <div class="col-sm-9"><div id="wdr-component"></div></div>
+        <div id ="graph-pane" class="col-sm-3"><div id="googlechart-container" style="width:350px;height:350px;"></div></div>
+    </div>
+    @*<table>
+        <tr>
+            <td style="width: 850px;">
+                <div id="wdr-component"></div>
+            </td>
+            <td>
+                <div id="googlechart-container" style="width:400px;height:450px;"></div>
+            </td>
+        </tr>
+    </table>*@
+    @*<div id="wdr-component"></div>*@
+
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            
+            //debugger
+            //var pendingOrders = getJSONPendingOrders();
+            //var pivot = new WebDataRocks({
+            //    container: "#wdr-component",
+            //    report: {
+            //        dataSource: {
+            //            data: getJSONData()
+            //        },
+            //        formats: [{
+            //            name: "calories",
+            //            maxDecimalPlaces: 2,
+            //            maxSymbols: 20,
+            //            textAlign: "right"
+            //        }],
+            //        slice: {
+            //            rows: [{
+            //                uniqueName: "Food"
+            //            }],
+            //            columns: [{
+            //                uniqueName: "Measures"
+            //            }],
+            //            measures: [{
+            //                uniqueName: "Calories",
+            //                aggregation: "average",
+            //                format: "calories"
+            //            }]
+            //        }
+            //    },
+            //    toolbar: true
+            //});
+            //debugger
+            //var pivot = new WebDataRocks({
+            //    container: "#wdr-component",
+            //    toolbar: true,
+            //    report: {
+            //        dataSource: {
+            //            data: getJSONData01()
+            //        },
+            //        formats: [{
+            //            name: "qtyallocated",
+            //            maxDecimalPlaces: 2,
+            //            maxSymbols: 20,
+            //            textAlign: "right"
+            //        }],
+            //        slice: {
+            //            rows: [{
+            //                uniqueName: "OrderDate"
+            //            }],
+            //            columns: [{
+            //                uniqueName: "Status"
+            //            }],
+            //            measures: [{
+            //                uniqueName: "QtyAllocated",
+            //                aggregation: "sum",
+            //                format: "qtyallocated"
+            //            }]
+            //        }
+            //    }
+            //});
+            getJSONPendingOrders();
+            debugger
+            google.charts.load('current', {
+                'packages': ['corechart']
+            });
+            google.charts.setOnLoadCallback(onGoogleChartsLoaded);
+
+        });
+
+        function getJSONData01() {
+            //{
+            //    "Status": {
+            //        type: "string"
+            //    },
+            //            "OrderDate": {
+            //            type: "date string"
+            //            },
+            //            "QtyAllocated": {
+            //            type: "number"
+            //            }
+            //},
+            var pendingOrders = getJSONPendingOrders();
+            return [
+	                {
+	                    "Status": "Canceled",
+	                    "OrderDate": "2019-01-24T00:00:00",
+	                    "QtyAllocated": 20
+	                },
+	                {
+	                    "Status": "No Inventory",
+	                    "OrderDate": "2019-01-25T00:00:00",
+	                    "QtyAllocated": 5
+	                }
+            ];
+        }
+
+        function getJSONData() {
+            return [{
+                "Category": {
+                    type: "level",
+                    hierarchy: "Food"
+                },
+                "Item": {
+                    type: "level",
+                    hierarchy: "Food",
+                    level: "Dish",
+                    parent: "Category"
+                },
+                "Serving Size": {
+                    type: "level",
+                    hierarchy: "Food",
+                    level: "Size",
+                    parent: "Dish"
+                },
+                "Calories": {
+                    type: "number"
+                },
+                "Calories from Fat": {
+                    type: "number"
+                }
+            },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Frittata",
+                    "Serving Size": "4.8 oz (136 g)",
+                    "Calories": 300,
+                    "Calories from Fat": 120
+                },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Boiled eggs",
+                    "Serving Size": "4.8 oz (135 g)",
+                    "Calories": 250,
+                    "Calories from Fat": 70
+                },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Sunny-side up eggs",
+                    "Serving Size": "3.9 oz (111 g)",
+                    "Calories": 370,
+                    "Calories from Fat": 200
+                },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Chocolate Cake",
+                    "Serving Size": "5.7 oz (161 g)",
+                    "Calories": 450,
+                    "Calories from Fat": 250
+                },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Sausages",
+                    "Serving Size": "5.7 oz (161 g)",
+                    "Calories": 400,
+                    "Calories from Fat": 210
+                },
+
+                {
+                    "Category": "Breakfast",
+                    "Item": "English Breakfast & Cookie",
+                    "Serving Size": "5.3 oz (150 g)",
+                    "Calories": 460,
+                    "Calories from Fat": 230
+                },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Cheesecake",
+                    "Serving Size": "5.8 oz (164 g)",
+                    "Calories": 420,
+                    "Calories from Fat": 270
+                },
+                {
+                    "Category": "Breakfast",
+                    "Item": "Honey Oatmeal",
+                    "Serving Size": "9.6 oz (251 g)",
+                    "Calories": 290,
+                    "Calories from Fat": 35
+                },
+
+                {
+                    "Category": "Beef & Pork",
+                    "Item": "Steak",
+                    "Serving Size": "7.1 oz (202 g)",
+                    "Calories": 520,
+                    "Calories from Fat": 240
+                },
+                {
+                    "Category": "Chicken & Fish",
+                    "Item": "Grilled Chicken",
+                    "Serving Size": "7 oz (200 g)",
+                    "Calories": 350,
+                    "Calories from Fat": 80
+                },
+                {
+                    "Category": "Chicken & Fish",
+                    "Item": "Chicken Sandwich",
+                    "Serving Size": "8.8 oz (249 g)",
+                    "Calories": 670,
+                    "Calories from Fat": 300
+                },
+                {
+                    "Category": "Chicken & Fish",
+                    "Item": "Fish Sandwich",
+                    "Serving Size": "7.6 oz (217 g)",
+                    "Calories": 450,
+                    "Calories from Fat": 130
+                }, {
+                    "Category": "Beverages",
+                    "Item": "Banana Smoothie",
+                    "Serving Size": "13.4 oz (381 g)",
+                    "Calories": 300,
+                    "Calories from Fat": 50
+                }
+            ];
+        }
+    </script>
+</div>
+<!-- END MAIN CONTENT -->

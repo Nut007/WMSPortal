@@ -1,0 +1,65 @@
+﻿@model System.Data.DataTable
+<script>
+    function outputGrid_onDataGridBound(arg) {
+        
+        var grid = $("#outputGrid").data("kendoGrid");  
+        for (var i = 0; i < grid.columns.length; i++) {  
+            grid.autoFitColumn(i);  
+        }  
+        
+    }
+    function outputGridInfo() {
+        debugger
+        alert("dddd");
+        var grid = $("#parameterGrid").data("kendoGrid");
+        var dataSource = grid.dataSource;
+        //var rows = JSON.stringify({ 'parameters': dataSource.data().toJSON() });
+        var rows = dataSource.data().toJSON();
+        return {
+            parameters: rows
+        }
+    }
+    function parseDate(d) {
+      alert("ddd");
+      d = new Date(parseInt(d.replace(/\/Date\((-?\d+)\)\//gi, "$1"), 10));
+      return d;
+    }
+</script>
+<div>
+    @(Html.Kendo().Grid<dynamic>()
+        .Name("outputGrid")
+        .Events(x => x.DataBound("outputGrid_onDataGridBound"))
+        .Columns(columns =>
+        {
+            foreach (System.Data.DataColumn column in Model.Columns)
+            {
+                if (column.DataType.FullName == "System.DateTime")
+                {
+                    var c = columns.Bound(column.ColumnName).ClientTemplate("#= kendo.toString(parseDate(" + column.ColumnName + "), 'dd/MM/yyyy') #");
+                }
+                else
+                {
+                    var c = columns.Bound(column.ColumnName);
+                }
+
+            }
+        })
+        .Selectable(selectable => selectable
+            .Type(GridSelectionType.Row)
+        )
+        .Resizable(r => r.Columns(true))
+        .Scrollable(s => s.Enabled(true).Height("auto"))
+        .AutoBind(false)
+        .DataSource(dataSource => dataSource
+            .Ajax()
+            .Model(model =>
+            {
+                foreach (System.Data.DataColumn column in Model.Columns)
+                {
+                    var field = model.Field(column.ColumnName, column.DataType);
+                }
+            })
+            //.Read(read => read.Action("ExecuteReport", "Helper").Data("outputGridInfo"))
+        )
+    )
+</div>

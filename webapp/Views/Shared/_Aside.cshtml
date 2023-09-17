@@ -1,0 +1,241 @@
+﻿<!-- Left panel : Navigation area -->
+<!-- Note: This width of the aside area can be adjusted through LESS variables -->
+@*@Scripts.Render("~/Scripts/libs/jquery-2.1.1.min.js")*@
+
+
+@{
+    AjaxOptions options = new AjaxOptions
+    {
+        HttpMethod = "POST",
+        OnBegin = "OnBegin(xhr)",
+        OnComplete = "OnComplete(xhr, status)",
+        OnFailure = "OnFailure(xhr, status, error)",
+        UpdateTargetId = "content",
+        InsertionMode = InsertionMode.ReplaceWith
+    };
+}
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        $('li a').click(function () {
+            //to remove class active from li elements
+            $(this).closest('ul').find('.active').removeClass('active');
+            //to remove li with active class
+            $(this).closest('ul').find('.active').remove();
+        });
+        $('ul li').click(function (event) {
+            $(this).addClass('active').siblings().removeClass('active');
+            drawBread();
+        });
+    });
+
+    function drawBread() {
+        var b = $("nav li.active > a > span");
+        c = b.length;
+        bread_crumb.empty();
+        //bread_crumb.append($("<li>Home</li>")),
+        b.each(function () {
+            bread_crumb.append($("<li></li>").html($.trim($(this).clone().children(".badge").remove().end().text())))
+            --c || (document.title = bread_crumb.find("li:last-child").text())
+        });
+        //void 0 != a && $.each(a, function (a, b) {
+        //    bread_crumb.append($("<li></li>").html(b)), document.title = bread_crumb.find("li:last-child").text()
+        //});
+    }
+
+    function OnBegin(xhr) {
+        NProgress.start();
+        //alert("Complete...");
+    }
+    function OnComplete(xhr, status) {
+        NProgress.done();
+        //alert("Complete...");
+    }
+    function OnFailure(xhr, status, error) {
+        //
+        NProgress.done(true);
+    }
+
+</script>
+
+
+<aside id="left-panel">
+    <!-- User info -->
+    @{ Html.RenderPartial("_CurrentUser"); }
+    <!-- end user info -->
+    <!-- NAVIGATION : This navigation is also responsive
+
+    To make this navigation dynamic please make sure to link the node
+    (the reference to the nav > ul) after page load. Or the navigation
+    will not initialize.
+    -->
+    <nav id="nav-main">
+        <!-- NOTE: Notice the gaps after each icon usage <i></i>..
+        Please note that these links work a bit different than
+        traditional href="" links. See documentation for details.
+        -->
+        @*<img src='../Images/tabsheet-add-24.png' />*@
+        @*<i class='fa fa-lg fa-fw fa-inbox'></i>*@
+        <ul>
+            @*<li id="receipt_dashboard" class="@Html.RouteIf("genericqueryreport", "active")">
+                @Ajax.RawActionLink("<img src='../content/img/loading.png' /> <span class='menu-item-parent'>Analytics Report</span>", "genericqueryreport", "genericreport", options)
+            </li>*@
+            @*@if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(12))
+            {
+                <li class="@Html.RouteIf("index", "active")">
+                    <a href="#" title="Dashboard"><i class="fa fa-lg fa-fw fa-home"></i> <span class="menu-item-parent">Dashboard</span></a>
+                    <ul>
+                        <li class="@Html.RouteIf("index", "active")">
+                                <a href="@Url.Action("index", "home")" title="Dashboard"><span class="menu-item-parent">Analytics Dashboard</span></a>
+                        </li>
+                        <li id="activities dashboard" class="@Html.RouteIf("activitiesdashboard", "active")">
+                            @Ajax.RawActionLink("<img src='../content/img/loading.png' /> <span class='menu-item-parent'>Activities Dashboard</span>", "activitiesdashboard", "home", options)
+                        </li>
+                        <li id="receipt_dashboard" class="@Html.RouteIf("analyticsreport", "active")">
+                            @Ajax.RawActionLink("<img src='../content/img/loading.png' /> <span class='menu-item-parent'>Analytics Report</span>", "analyticsreport", "home", options)
+                        </li>
+                    </ul>
+                </li>
+            }*@
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(11))
+            {
+                <li class="@Html.RouteIf("ConsignmentList", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/email-icon.png' /> <span class='menu-item-parent'>Post Shipment Tracking</span>", "ConsignmentList", "ECommerce", options)
+                </li>
+            }
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(1))
+            {
+                <li class="@Html.RouteIf("receiptlist", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/loading.png' /> <span class='menu-item-parent'>Receipt</span>", "receiptlist", "receipt", options)
+                </li>
+            }
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(2))
+            {
+                <li class="@Html.RouteIf("orderslist", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/unloading.png' /> <span class='menu-item-parent'>Order List</span>", "orderslist", "orders", options)
+                </li>
+                <li class="@Html.RouteIf("pickingdashboard", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/notes-24.png' /> <span class='menu-item-parent'>Picking Dashboard</span>", "pickingdashboard", "orders", options)
+                </li>
+            }
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(7))
+            {
+                <li class="@Html.RouteIf("orderslist", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/shoppingcart-24.png' /> <span class='menu-item-parent'>Order List</span>", "orderslist", "orders", options)
+                </li>
+                <li class="@Html.RouteIf("shipmentorders", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/notes-24.png' /> <span class='menu-item-parent'>Order Managment</span>", "shipmentorders", "orders", options)
+                </li>
+            }
+
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(3))
+            {
+                <li class="@Html.RouteIf("stockbalancelist", "active")">
+                    @Ajax.RawActionLink("<img src='../content/img/goods.png' /> <span class='menu-item-parent'>Inventory</span>", "stockbalancelist", "stockbalance", options)
+                </li>
+            }
+
+
+            <li class="@Html.RouteIf("commodities", "active")">
+                @*@Ajax.RawActionLink("<img src='../content/img/tasklist.png' /> <span class='menu-item-parent'>DG Goods Validation</span>", "commodityInfo", "stockbalance", options)*@
+            </li>
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(6))
+            {
+                <li class="@Html.RouteIf("customsreport", "active")">
+                    <a href="#"><img src='../content/img/application.png' /> <span class="menu-item-parent">Reports</span></a>
+                    <ul>
+                        <li class="@Html.RouteIf("customsreport", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>Customs Inbound</span>", "CustomsInboundReport", "CustomsReport", options)
+                        </li>
+                        <li class="@Html.RouteIf("customsreport", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>Customs Outbound</span>", "CustomsOutboundReport", "CustomsReport", options)
+                        </li>
+                        <li class="@Html.RouteIf("customsreport", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>Customs Inventory</span>", "StockBalanceReport", "CustomsReport", options)
+                        </li>
+                        <li class="@Html.RouteIf("customsreport", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>Dynamic Reports</span>", "DynamicReports", "CustomsReport", options)
+                        </li>
+                        @*<li class="@Html.RouteIf("customsreport", "active")">
+            @Ajax.RawActionLink("<span class='menu-item-parent'>Ledger Report</span>", "LedgerReport", "CustomsReport", options)
+        </li>
+        <li class="@Html.RouteIf("customsreport", "active")">
+            @Ajax.RawActionLink("<span class='menu-item-parent'>Movement Report</span>", "MovementReport", "CustomsReport", options)
+        </li>*@
+                        @*<li class="@Html.RouteIf("customsreport", "active")">
+            @Ajax.RawActionLink("<span class='menu-item-parent'>Inbound Transections</span>", "CustomsInboundTransReport", "CustomsReport", options)
+        </li>*@
+                    </ul>
+                </li>
+            }
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(9))
+            {
+                <li class="@Html.RouteIf("loading", "active")">
+                    <a href="#"><img src='../content/img/storekeeper.png' /> <span class="menu-item-parent">Loading</span></a>
+                    <ul>
+                        <li class="@Html.RouteIf("loading", "active")">
+                            <a href="@Url.Action("loadingList", "loading")"><i class="fa fa-group"></i> Loading List</a>
+                            @*@Ajax.RawActionLink("<span class='menu-item-parent'>Truck Manifest</span>", "loadingList", "loading", options)*@
+                        </li>
+                        <li class="@Html.RouteIf("signature", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>Signature</span>", "signature", "loading", options)
+                        </li>
+                        <li class="@Html.RouteIf("loadingmanagment", "active")">
+                            <a href="@Url.Action("loadingManagment", "loading")"><i class="fa fa-group"></i> Loading Managment</a>
+                            @*@Ajax.RawActionLink("<span class='menu-item-parent'>Truck Manifest</span>", "loadingList", "loading", options)*@
+                        </li>
+                        <li class="@Html.RouteIf("proofOfDelivery", "active")">
+                            <a href="@Url.Action("proofofdelivery", "loading")"><i class="fa fa-group"></i> Proof Of Delivery</a>
+                            @*@Ajax.RawActionLink("<span class='menu-item-parent'>Truck Manifest</span>", "loadingList", "loading", options)*@
+                        </li>
+                    </ul>
+                </li>
+            }
+            @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(8))
+            {
+                <li class="@Html.RouteIf("postservice", "active")">
+                    <a href="#"><img src='../content/img/addressbook.png' /> <span class="menu-item-parent">Post Services</span></a>
+                    <ul>
+                        <li class="@Html.RouteIf("postservice", "active")">
+                            @Ajax.RawActionLink("<img src='../content/img/zoom.png' /> <span class='menu-item-parent'>Baggage Screening</span>", "BaggageScreening", "receipt", options)
+                        </li>
+                        <li class="@Html.RouteIf("postservice", "active")">
+                            @Ajax.RawActionLink("<img src='../content/img/notelist.png' /> <span class='menu-item-parent'>Baggage List</span>", "baggagelist", "receipt", options)
+                        </li>
+                        @*<li class="@Html.RouteIf("postservice", "active")">
+                                @Ajax.RawActionLink("<img src='../content/img/notelist.png' /> <span class='menu-item-parent'>Baggage Managment</span>", "baggagemanagment", "receipt", options)
+                            </li>*@
+                    </ul>
+                </li>
+            }
+            <li class="@Html.RouteIf("setup", "active")">
+                <a href="#"><img src='../content/img/storekeeper.png' /> <span class="menu-item-parent">Setup</span></a>
+                <ul>
+                    @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(4))
+                    {
+                        <li class="@Html.RouteIf("lookupmasterlist", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>Connections</span>", "rolelist", "role", options)
+                        </li>
+                    }
+                    @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(5))
+                    {
+                        <li class="@Html.RouteIf("lookupmasterlist", "active")">
+                            @Ajax.RawActionLink("<span class='menu-item-parent'>User</span>", "userlist", "user", options)
+                        </li>
+                    }
+                    @if (WMSPortal.Extensions.MenuSecurity.IsUserInRole(10))
+                    {
+                        <li class="@Html.RouteIf("managecodelookup", "active")">
+                            @Ajax.RawActionLink("<img src='../content/img/document-header.png' /> <span class='menu-item-parent'>Master Data</span>", "managecodelookup", "codelookup", options)
+                        </li>
+                    }
+                </ul>
+            </li>
+
+        </ul>
+    </nav>
+    <span class="minifyme" data-action="minifyMenu">
+        <i class="fa fa-arrow-circle-left hit"></i>
+    </span>
+</aside>
+<!-- END NAVIGATION -->

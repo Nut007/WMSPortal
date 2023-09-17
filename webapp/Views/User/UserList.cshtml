@@ -1,0 +1,365 @@
+﻿@using WMSPortal.ViewModels;
+
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<div id="content">
+
+    <style>
+        #content,
+        #userGrid {
+            height: 100%;
+        }
+
+        .k-grid tbody .k-button {
+            min-width: 0px;
+        }
+
+        .k-grid-Copy span {
+            background-image: url('../Images/delete.png');
+            width: 14px;
+            height: 14px;
+            line-height: 14px;
+            display: inline-block;
+            background-position: -96px -48px;
+        }
+    </style>
+
+    <script>
+        var currentModel;
+        var _IsNew;
+        var _IsDirty;
+        function userGridSelectAll(isSelected) {
+            var grid = $("#userGrid").data("kendoGrid");
+            var view = grid.dataSource.view();
+
+            for (var i = 0; i < view.length; i++) {
+                grid.tbody.find("tr[data-uid='" + view[i].uid + "']")
+                       .find(".chk")
+                       .attr("checked", (!isSelected ? true : false))
+                       .trigger("click");
+            }
+        }
+        function onClick(e) {
+            GetUsersSelected();
+        }
+        function GetUsersSelected() {
+            var ids = [];
+            var grid = $("#userGrid").data("kendoGrid");
+            var view = grid.dataSource.view();
+
+            for (var i = 0; i < view.length; i++) {
+                var row = grid.table.find("tr[data-uid='" + view[i].uid + "']");
+                var checkbox = $(row).find(".chk");
+                if (checkbox.is(":checked")) {
+                    ids.push(view[i].UserID);
+                }
+            }
+            return ids;
+        }
+        function DeleteSelection(e) {
+            e.preventDefault;
+            var users = GetUsersSelected();
+            if (users.length == 0) return;
+            $('#dialog_User_delete').dialog('open');
+        }
+        function DeleteUser() {
+            var users = GetUsersSelected();
+            $.ajax({
+                url: "@Url.Action("DeleteUsers", "User")",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ userIDs: users }),
+                success: function (data, status, xhr) {
+                    var dataSource = $("#userGrid").data().kendoGrid.dataSource;
+                    $.each(users, function (index, value) {
+                        var item = dataSource.get(value);
+                        dataSource.remove(item);
+                    });
+                    $("#userGrid").data("kendoGrid").dataSource.page(1);
+                },
+                error: function (xhr, status, err) {
+                    if (xhr.status == 400) {
+                        alert("success..");
+                    }
+                    else {
+                        alert("most probably HTTP 5xx");
+                    }
+                }
+            });
+        }
+        function ResizeuserGrid() {
+            $('#userGrid-SelectAll').attr('checked', false);
+            var gridElement = $("#userGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+
+        function userGrid_Databound() {
+            checkedIds = [];
+            $('#userGrid-SelectAll').attr('checked', false); // Checks it
+            ResizeuserGrid();
+        }
+
+        function findUser() {
+            var field = $("#userFields").data("kendoDropDownList").value();
+            var value = $("#userfilter").val();
+            $.ajax({
+                url: "/User/GetUsers",
+                type: 'POST',
+                contentType: "application/json;charset=utf-8",
+                data: JSON.stringify({ column: field, value: value }),
+                dataType: "json",
+                success: function (data) {
+                    var grid = $('#userGrid').getKendoGrid();
+                    grid.dataSource.data(data);
+                }
+            });
+
+        }
+       
+        function userGrid_Edit(e) {
+
+            var kendoWindow = e.container.data("kendoWindow");
+            _IsNew = e.model.isNew();
+            _IsDirty = e.model.dirty;
+            if (e.model.isNew()) {
+                //set options using the setOptions method
+                kendoWindow.setOptions({
+                    title: "Create User"
+                });
+            } else {
+                //set options using the setOptions method
+                kendoWindow.setOptions({
+                    title: "Edit User"
+                });
+            }
+            e.container.find(".k-edit-buttons.k-state-default").css("width", "435px");
+            $('.k-grid-update').css('display', 'none');
+            var cancel = $(e.container).parent().find(".k-grid-cancel-changes");
+            $(cancel).html('<span class="k-icon k-cancel"></span>Cancel Changed');
+            $(".k-edit-buttons.k-state-default").prepend('<a class="k-button k-button-icontext k-primary" id="summitUserRole"><span class="k-icon k-edit"></span>Save</a>');
+            AddSummitUserRoleClickEvent();
+            // User for refresh application roles data in grid
+            $("#userRoleGrid").data("kendoGrid").dataSource.read();
+        }
+       
+        function AddSummitUserRoleClickEvent() {
+
+            $('#summitUserRole').click(function () {
+                var $formNode = document.getElementById("user-form");
+                var model = formToObject($formNode);
+                var datepicker = $("#DisableAfterDate").data("kendoDatePicker");
+                model.UserID = document.getElementById("UserID").value;
+                //model.DisableAfterDate = datepicker.value();
+                model._IsNew = _IsNew;
+                model.UserRoles = [];
+                var roles = $("#userRoleGrid").data().kendoGrid._data;
+                for (i = 0; i < roles.length; i++) {
+                    if (roles[i].dirty) {
+                        model.UserRoles.push(roles[i]);
+                    }
+                }
+                $.ajax({
+                    url: "@Url.Action("CreateOrUpdateUser", "User")",
+                    type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(model),
+                success: function (data, status, xhr) {
+                    var uid = $('.k-edit-form-container').closest('[data-role=window]').data('uid');
+                    var model = $('#userGrid').data('kendoGrid').dataSource.getByUid(uid);
+                    if (model.get('UserID') === 0) {
+                        model.set('UserID', data.Data[0].UserID);
+                    }
+                    model.dirty = false;
+                    if (!_IsNew) {
+                        $('#userGrid').data('kendoGrid').dataSource.pushUpdate(model);
+                    }
+                    else {
+                        $('#userGrid').data('kendoGrid').dataSource.sync();
+                    }
+                    $('#userGrid').data('kendoGrid').refresh();
+                },
+                error: function (xhr, status, err) {
+                    if (xhr.status == 400) {
+                        alert("success..");
+                    }
+                    else {
+                        alert("most probably HTTP 5xx");
+                    }
+                }
+            });
+            });
+        }
+        //function userGrid_Error(e) {
+        //    if (e.errors) {
+        //        var message = "Errors:\n";
+        //        $.each(e.errors, function (key, value) {
+        //            if ('errors' in value) {
+        //                $.each(value.errors, function () {
+        //                    message += this + "\n";
+        //                });
+        //            }
+        //        });
+        //        alert(message);
+        //    }
+        //}
+        $(window).on("resize", function () {
+            ResizeuserGrid();
+        });
+
+        $(document).ready(function () {
+
+            $("#userGrid-SelectAll").bind("click", function () {
+                userGridSelectAll(this.checked);
+            });
+            $("#findUser").kendoButton({
+                icon: "funnel"
+            });
+            $("#deleteUser").kendoButton({
+                icon: "close"
+            });
+            $("#textButton").kendoButton({
+                click: onClick
+            });
+            $("#userfilter").keyup(function (event) {
+                if (event.keyCode == 13) {
+                    $("#findUser").click();
+                }
+            });
+            $.widget("ui.dialog", $.extend({}, $.ui.dialog.prototype, {
+                _title: function (title) {
+                    if (!this.options.title) {
+                        title.html("&#160;");
+                    } else {
+                        title.html(this.options.title);
+                    }
+                }
+            }));
+
+            $('#findUser').click(function (e) {
+                e.preventDefault();
+                findUser();
+            });
+
+            $('#dialog_User_delete').dialog({
+                autoOpen: false,
+                width: 300,
+                resizable: false,
+                modal: true,
+                title: "<div class='widget-header'><h4><i class='fa fa-warning'></i> Delete User</h4></div>",
+                buttons: [{
+                    html: "<i class='fa fa-trash-o'></i>&nbsp; Delete",
+                    "class": "btn btn-danger",
+                    click: function () {
+                        DeleteUser();
+                        $(this).dialog("close");
+                    }
+                }, {
+                    html: "<i class='fa fa-times'></i>&nbsp; Cancel",
+                    "class": "btn btn-default",
+                    click: function () {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+        });
+
+    </script>
+
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">User</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("userFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "User Name",
+                                Value = "UserName"
+                            }
+                        })
+                        .Value("UserName")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="userfilter" type="text" class="k-textbox" style="width: 185px;" placeholder="Type to filter..." />
+                </div>
+                <button type="button" id="findUser">Search</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<UserListViewModel>()
+            .Name("userGrid")
+            .EnableCustomBinding(true)
+            .ToolBar(toolbar =>
+            {
+                toolbar.Create().Text("Create");
+                toolbar.Custom().Text("Delete").Url("#").HtmlAttributes(new { id = "deleteUser", onclick = "DeleteSelection(event)" });
+            })
+            .Columns(columns =>
+            {
+                columns.Command(
+                    command =>
+                    {
+                        command.Edit().UpdateText("Save").CancelText("Cancel").Text("Edit");
+                    }
+                ).Width(40);
+                columns.Bound(o => o.UserID)
+                    .ClientTemplate("<input type='checkbox' id='selectRecord' class='chk' value='#=UserID#' />")
+                    .HeaderTemplate("<input type='checkbox' id='userGrid-SelectAll'  />")
+                    .Width(15)
+                    .Sortable(false)
+                    .Filterable(false);
+                columns.Bound(o => o.UserName).Width(100);
+                columns.Bound(o => o.Email).Width(100);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("UserList_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(tools => tools.Excel())
+            .Editable(editable => editable.Mode(GridEditMode.PopUp).Window(w => w.Width(654))
+            .DisplayDeleteConfirmation(false)
+            .TemplateName("UserListViewModel")
+            .Window(w => w.Width(460).Title("Create/Edit User")))
+            .Pageable()
+            .Events(events =>  events.DataBound("userGrid_Databound").Edit("userGrid_Edit"))
+            .Sortable()
+            .Scrollable()
+            .Selectable(select => select.Mode(GridSelectionMode.Single))
+            .DataSource(dataSource => dataSource
+                
+            .Ajax()
+            .PageSize(20)
+            .Model(model => model.Id(p => p.UserID))
+            //.Events(events => events.Error("userGrid_Error"))
+            .Read(read => read.Action("GetAllUsers", "User"))
+            .Create(create => create.Action("RefreshUser", "User"))
+            .Update(update => update.Action("RefreshUser", "User"))
+            .ServerOperation(false)
+            )
+            )
+        </div>
+
+        <div id="dialog_User_delete" title="Delete">
+            <p>
+                Do you want to delete this record?
+            </p>
+        </div>
+
+    </div>
+
+
+</div>

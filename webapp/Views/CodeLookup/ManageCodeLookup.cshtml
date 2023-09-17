@@ -1,0 +1,275 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<div id="content">
+    <style>
+         .k-grid td {
+            border-width: 0;
+        }
+    </style>
+    <script>
+        function codeLookupGrid_onErrors(e) {
+            if (e.status = "error") {
+                $.when(kendo.ui.ExtAlertDialog.show({
+                    title: "Error",
+                    message: e.xhr.responseText,
+                    icon: "k-ext-error",
+                    width: 500,
+                    height: 120
+                }))
+            }
+        }
+        function codeLookupParams() {
+            return {
+                lookupGroupCode: $("#groupLookup").data("kendoDropDownList").value()
+            };
+        }
+        function codeLookupGrid_CheckAll(ele) {
+            var state = $(ele).is(':checked');
+            var grid = $('#codeLookupGrid').data().kendoGrid;
+            $.each(grid.dataSource.view(), function () {
+                if (this['IsSelected'] != state)
+                    this.dirty = true;
+                this['IsSelected'] = state;
+            });
+            grid.refresh();
+        }
+    </script>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Code Lookup</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    @(Html.Kendo().DropDownList()
+                        .Name("groupLookup")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Master AirWay Bill",
+                                Value = "MAWB"
+                            }
+                        })
+                        .Value("PRODLINE")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <button type="button" id="findCodeLookup" class="k-button k-primary" onclick="SearchLookupCode()">Search</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<CodeLookupViewModel>()
+            .Name("codeLookupGrid")
+            .Columns(columns =>
+            {
+            columns.Template(@<text></text>).ClientTemplate("<input type='checkbox' #= IsSelected ? checked='checked':'' # class='chkbx' />")
+                    .HeaderTemplate("<input type='checkbox' id='gridMasterCheckBox' onclick='codeLookupGrid_CheckAll(this)'/>").Width(15);
+                columns.Bound(o => o.Description).Width(100).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.Short).Width(100).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.Long).Width(100).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.Notes).Width(100).Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").SuggestionOperator(FilterType.Contains)));
+                columns.Bound(o => o.Code).Hidden();
+                //columns.Bound(o => o.CodeLookupId).Width(100);
+            })
+            .ToolBar(toolBar =>
+            {
+            toolBar.Create();
+            toolBar.Save();
+            //toolBar.Custom().Name("DeleteI").Text("<span class='k-icon k-i-pdf'></span>Delete").Url("#").HtmlAttributes(new { onclick = "DeleteLookupItems()"  });
+            @*toolBar.Template(@<text>
+                <div style="float: left;">
+                    <a class="k-button k-button-icontext deleteLookupCode" href="/"><span><img src="~/Content/img/reply.png" /></span> Delete Items</a>
+                    <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                </div>
+            </text>);*@
+            })
+            .Filterable(ftb => ftb.Mode(GridFilterMode.Row))
+            .Editable(editable => editable.Mode(GridEditMode.InCell))
+            .Pageable()
+            .Sortable()
+            .Scrollable()
+            .Excel(ex => ex.AllPages(true).FileName("CodeLookupList_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .DataSource(dataSource => dataSource
+            .Ajax()
+            .Batch(true)
+            .ServerOperation(false)
+            .Model(model =>
+            {
+                model.Id(p => p.Code);
+                model.Field(p => p.Code).Editable(true);
+                model.Field(p => p.Description);
+            })
+            .PageSize(20)
+            .Events(events => events.Error("codeLookupGrid_onErrors"))
+            .Read(read => read.Action("GetAllCodeLookups", "CodeLookup").Data("codeLookupParams"))
+            .Create(create => create.Action("CreateCodeLookup", "CodeLookup").Data("codeLookupParams"))
+            .Update(update => update.Action("UpdateCodeLookup", "CodeLookup").Data("codeLookupParams"))
+            .ServerOperation(false)
+            )
+            )
+        </div>
+
+        @*<div id="dialog_codeLookup_delete" title="Delete">
+                <p>
+                    Do you want to delete this record?
+                </p>
+            </div>*@
+
+    </div>
+    <script>
+        $(document).ready(function () {
+            ResizeGrid();
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        function ResizeGrid() {
+            var gridElement = $("#codeLookupGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+        function SearchLookupCode() {
+            var grid = $("#codeLookupGrid").data("kendoGrid");
+            if (grid != null) {
+                if (grid.dataSource.page() != 1) {
+                    grid.dataSource.page(1);
+                }
+                grid.dataSource.read();
+            }
+        }
+        function DeleteLookupItems()
+        {
+           $.when(kendo.ui.ExtOkCancelDialog.show({
+                title: "OK/Cancel",
+                message: "Do you want to delete items",
+                icon: "k-ext-question"
+            })
+            ).done(function (response) {
+                if (response.button == "OK") {
+                    var workOrderId, materialCode;
+                    selItems = getSelectedDetailItems();
+                    if (selItems.length > 0)
+                    {
+                        $.ajax({
+                        url: '@Url.Action("DeleteLookupItems", "CodeLookup")',
+                        type: 'post',
+                        data: { codeLookupIdList: selItems, codeLookupGroup: $("#groupLookup").data("kendoDropDownList").value() },
+                        success: function (data) {
+                            if (data.isValid == null) {
+                                $.smallBox({
+                                    title: "Delete Item",
+                                    content: "<i class='fa fa-clock-o'></i> <i> Lookup item(s) have been deleted</i>",
+                                    color: "#296191",
+                                    iconSmall: "fa fa-thumbs-up bounce animated",
+                                    timeout: 4000
+                                });
+                                var grid = $('#codeLookupGrid').getKendoGrid();
+                                grid.dataSource.read();
+                                grid.refresh();
+                            }
+                            else {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: data.exceptionErrorMessage,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        },
+                        error: function (xhr) {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: xhr.responseText,
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                        }
+                    });
+                    }
+
+                }
+            });
+        }
+        $("#codeLookupGrid").on("click", ".deleteLookupCode", function (e) {
+            e.preventDefault();
+            $.when(kendo.ui.ExtOkCancelDialog.show({
+                title: "OK/Cancel",
+                message: "Do you want to delete items",
+                icon: "k-ext-question"
+            })
+            ).done(function (response) {
+                if (response.button == "OK") {
+                    var workOrderId, materialCode;
+                    selItems = getSelectedDetailItems();
+                    if (selItems.length > 0)
+                    {
+                        $.ajax({
+                        url: '@Url.Action("DeleteLookupItems", "CodeLookup")',
+                            type: 'post',
+                            data: { codeLookupIdList: selItems, codeLookupGroup: $("#groupLookup").data("kendoDropDownList").value() },
+                            success: function (data) {
+                                if (data.isValid == null) {
+                                    $.smallBox({
+                                        title: "Delete Work Order Transaction",
+                                        content: "<i class='fa fa-clock-o'></i> <i> Work order transaction have been deleted</i>",
+                                        color: "#296191",
+                                        iconSmall: "fa fa-thumbs-up bounce animated",
+                                        timeout: 4000
+                                    });
+                                    var grid = $('#codeLookupGrid').getKendoGrid();
+                                    grid.dataSource.read();
+                                    grid.refresh();
+                                }
+                                else {
+                                    $.when(kendo.ui.ExtAlertDialog.show({
+                                        title: "Error",
+                                        message: data.exceptionErrorMessage,
+                                        icon: "k-ext-error",
+                                        width: 500,
+                                        height: 120
+                                    }))
+                                }
+                            },
+                            error: function (xhr) {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: xhr.responseText,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        });
+                    }
+
+                    }
+                });
+        });
+        function getSelectedDetailItems() {
+            var selchbox = [];
+            var ch = $('#codeLookupGrid').find('tbody input[type=checkbox]');
+            ch.each(function () {
+                var $this = $(this);
+                if ($this.is(':checked')) {
+                    sel = true; //set to true if there is/are selected row
+                    transId = $(this).closest("tr").find("td")[2].innerText
+                    selchbox.push(transId);
+                }
+            });
+            return selchbox;
+        }
+    </script>
+</div>

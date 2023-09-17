@@ -1,0 +1,235 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+
+<div id="content">
+    <style>
+        .k-grid td {
+            border-width: 0;
+        }
+
+    </style>
+    <script>
+        function SetFlightStatus(movementStatus) {
+            var html;
+
+            if (movementStatus == "DEP") {
+                html = "background-color:green;color:white;";
+            }
+            else {
+                html = "";
+            }
+
+            return html;
+        }
+        function consignmentFields_Select(e) {
+            var target;
+            var dataItem = this.dataItem(e.item);
+            if (dataItem.Value == "Status")
+                target = ".status-filter";
+            else
+                target = ".text-filter";
+            VisibleFilter(target);
+        }
+        function additionalInfo() {
+            var columnName;
+            var issueStartDate;
+            var issueStopDate;
+            var value;
+         
+            var issueStartDate = $("#IssueStartdate").data("kendoDatePicker");
+            var issueStopDate = $("#IssueStopdate").data("kendoDatePicker");
+
+            var cat = $("#consignmentFields").data("kendoDropDownList");
+            var cboStatus = $("#statusFilter").data("kendoDropDownList");
+
+        
+            if (cat.value() == "Status")
+                txtValue = cboStatus.value();
+            else
+                txtValue = document.getElementById('consignmentfilter').value;
+
+            columnName = cat.value();
+      
+            var column = columnName;
+            var value = txtValue;
+            var userId = '@currentUser.UserName';
+            return {
+                issueStartDate:  kendo.toString(issueStartDate.value(), "yyyy-MM-dd") + ' ' + '00:00:00',
+                issueStopDate: kendo.toString(issueStopDate.value(), "yyyy-MM-dd") + ' ' + '00:00:00',
+                column: column,
+                value: value,
+                userId: userId
+            }
+        }
+    </script>
+
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Consignment List</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="form-inline pull-right-sm">
+                <div class="form-group">
+                    <div class="date-filter">
+                        <span>Departure Date :</span>
+                        @(Html.Kendo().DatePicker()
+                            .Name("IssueStartdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .HtmlAttributes(new { @style = "width: 105px;" })
+                        )
+                        @(Html.Kendo().DatePicker()
+                            .Name("IssueStopdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .HtmlAttributes(new { @style = "width: 105px;" })
+                        )
+                    </div>
+                </div>
+                <div class="form-group">
+                    <span>Filter :</span>
+                    @(Html.Kendo().DropDownList()
+                        .Name("consignmentFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Consignment ID",
+                                Value = "ConsignmentID"
+                            },
+                            new SelectListItem() {
+                                Text = "DN",
+                                Value = "DN"
+                            },
+                            new SelectListItem() {
+                                Text = "MAWB",
+                                Value = "tb_db_ecommerce.MAWB"
+                            },
+                            new SelectListItem() {
+                                Text = "Status",
+                                Value = "Status"
+                            }
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("consignmentFields_Select");
+                        })
+                        .Value("ConsignmentID")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                </div>
+                <div class="form-group">
+                    <input id="consignmentfilter" type="text" class="k-textbox text-filter" style="width: 185px;" placeholder="Type to filter..." />
+                    <div class="status-filter">
+                       @(Html.Kendo().DropDownList()
+                        .Name("statusFilter")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Pending",
+                                Value = "Pending"
+                            },
+                            new SelectListItem() {
+                                Text = "Booked",
+                                Value = "Booked"
+                            },
+                            new SelectListItem() {
+                                Text = "Verified",
+                                Value = "Verified"
+                            },
+                        })
+                        .Value("Pending")
+                        .HtmlAttributes(new { style = "width:185px" })
+                    )
+                    </div>
+                </div>
+                <button type="button" id="searchConsignment" class="k-button k-primary" onclick="SearchConsignment()">Search</button>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<ConsignmentListViewModel>()
+                .Name("consignmentGrid")
+                .AutoBind(false)
+                .EnableCustomBinding(true)
+                .Columns(columns =>
+                {
+                    columns.Bound(o => o.Status).ClientTemplate(" # if (Status=='Booked') { #" +
+                       "<div style='display:inline-block; width:60px' class='label label-warning label-as-badge'>Booked</div>" +
+                       "# } else if (Status=='Pending')  { #" +
+                       "<div style='display:inline-block; width:60px' class='label label-info label-as-badge'>Pending</div>" +
+                       "# } else if (Status=='Verified')  { #" +
+                       "<div style='display:inline-block; width:60px' class='label label-success label-as-badge'>Verified</div>" +
+                       "# } else { #" +
+                       "<div style='display:inline-block; width:60px' class='label label-primary label-as-badge'>Undefined</div>" +
+                       "# } #").Width(50).Title("Status");
+                    columns.Bound(o => o.ConsignmentID).Width(70);
+                    columns.Bound(o => o.DN).Width(50);
+                    columns.Bound(o => o.Mawb).Width(70);
+                    columns.Bound(o => o.Pickup_Date).ClientTemplate("#= ConvertDateTimeFormat(Pickup_Date) #").Width(70);
+                    //columns.Bound(o => o.Issue_Date).ClientTemplate("#= ConvertDateTimeFormat(Issue_Date) #").Width(70);
+                    columns.Bound(o => o.Origin).Width(50);
+                    columns.Bound(o => o.Dest).Width(25);
+                    columns.Bound(o => o.Peice).Width(40);
+                    columns.Bound(o => o.Weight).Width(50);
+                    columns.Bound(o => o.Vol).Width(50);
+                    columns.Bound(o => o.Flight_BKK).Width(50);
+                    columns.Bound(o => o.Date_BKK).ClientTemplate("#= ConvertDateTimeFormat(Date_BKK) #").Width(70);
+                    columns.Bound(o => o.MVT_BKK).HtmlAttributes(new { style = "#= SetFlightStatus(MVT_BKK) #" }).Width(50);
+                    columns.Bound(o => o.Flight_DOH).Width(50);
+                    columns.Bound(o => o.Date_DOH).ClientTemplate("#= ConvertDateTimeFormat(Date_DOH) #").Width(70);
+                    columns.Bound(o => o.MVT_DOH).HtmlAttributes(new { style = "#= SetFlightStatus(MVT_DOH) #" }).Width(50);
+                    //columns.Bound(o => o.Mawb).Width(50);
+
+                })
+                .Excel(ex => ex.AllPages(true).FileName("Consignment_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+                .ToolBar(tools => tools.Excel())
+                .Pageable()
+                .Sortable()
+                .Scrollable()
+                .DataSource(dataSource => dataSource
+                .Ajax()
+                .PageSize(50)
+                .Model(model => model.Id(p => p.ConsignmentID))
+                .Read(read => read.Action("GetConsignmentList", "ECommerce").Data("additionalInfo"))
+                .ServerOperation(false)
+                )
+            )
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            VisibleFilter(".text-filter");
+            ResizeGrid();
+            SearchConsignment();
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+        function VisibleFilter(target) {
+            $(".status-filter").hide();
+            $(".text-filter").hide();
+            $(target).show();
+        }
+        function ResizeGrid() {
+            var gridElement = $("#consignmentGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+        function SearchConsignment() {
+            $("#consignmentGrid").data("kendoGrid").dataSource.read();
+        }
+
+    </script>
+
+</div>

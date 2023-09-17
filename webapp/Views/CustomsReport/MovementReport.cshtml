@@ -1,0 +1,285 @@
+﻿@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+<div id="content">
+
+    <style>
+        .fieldlist {
+            margin: 0 0 -1em;
+            padding: 0;
+        }
+
+        .fieldlist li {
+            list-style: none;
+            padding-bottom: 1em;
+        }
+        .im-centered {
+            margin: auto;
+            max-width: 800px;
+        }
+    </style>
+
+    <div class="im-centered padding-top-5">
+        <div class="row">
+            <div class="col-md-12 col-xs-12 col-centered">
+                <!-- Widget ID (each widget will need unique ID)-->
+                <div class="jarviswidget" id="wid-id-0" data-widget-editbutton="false" data-widget-custombutton="false">
+
+                    <header>
+                        <span class="widget-icon"> <i class="fa fa-edit"></i> </span>
+                        <h2>รายงานการเคลื่อนไหวของของที่นำเข้า </h2>
+                    </header>
+
+                    <!-- widget div-->
+                    <div>
+                        <div class="widget-body no-padding">
+                            <form id="smart-form-register" class="smart-form">
+                                <header>
+                                    <h3>เลือกเงื่อนไขรายงาน</h3>
+                                </header>
+
+                                <fieldset class="padding-bottom-20">
+                                    <div class="row">
+                                        <section class="col col-12">
+                                            <h4 class="padding-bottom-10">วันทีนำเข้า</h4>
+                                            <ul class="fieldlist padding-top-5">
+                                                <li>
+                                                    <label class="radio-inline padding-left-50"><input type="radio" name="importdate" value="0" checked>ปี/เดือน นำเข้าสินค้า</label>
+                                                    @*@(Html.Kendo().RadioButton().Name("importdate1x").Checked(true).HtmlAttributes(new { @name = "importdate" }).Label("ปี/เดือน นำเข้าสินค้า"))*@
+                                                    <div class="row padding-top-5 padding-left-50">
+                                                        <span class="padding-right-10">ประจำปี</span><input id="inbYearList" />&nbsp; เดือน&nbsp;<input id="inbMonthList" />
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    @*@(Html.Kendo().RadioButton().Name("importdate2y").HtmlAttributes(new { @name = "importdate" }).Label("ระยะเวลานำเข้าสินค้า"))*@
+                                                    <label class="radio-inline padding-left-50"><input type="radio" name="importdate" value="1">ระยะเวลานำเข้าสินค้า</label>
+                                                    <div id ="dateRange" class="row padding-top-5 padding-left-50">
+                                                        จากวันที่&nbsp;@(Html.Kendo().DatePicker()
+                                                      .Name("inbCustomsStartDate")
+                                                      .Format("dd/MM/yyyy")
+                                                      .Value("10/10/2011")
+                                                        )
+                                                        &nbsp;ถึง&nbsp;
+                                                        @(Html.Kendo().DatePicker()
+                                                      .Name("inbCustomsStopDate")
+                                                      .Format("dd/MM/yyyy")
+                                                      .Value("10/10/2011")
+                                                        )
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </section>
+                                    </div>
+                                    <h4>รหัสสินค้า</h4>
+                                    @Html.TextBox("productCode", null, new { @class = "k-textbox" })
+                                    <h4>ประเภทใบขนขาเข้า</h4>
+                                    <select id="inbDeclarationType" multiple="multiple"></select>
+                                    <h4>ผู้นำเข้า</h4>
+                                    <select id="importerSelect" multiple="multiple"></select>
+                                </fieldset>
+
+                                <footer>
+                                    <section class="progress-demo">
+                                        <button id="inboundExportExcel" class="btn btn-primary">
+                                            <i class="fa fa-file-excel-o"></i>
+                                            นำข้อมูลออกเป็น Excel File
+                                        </button>
+                                        
+                                    </section>
+
+                                   
+                                </footer>
+                            </form>
+
+                        </div>
+                        <!-- end widget content -->
+                    </div>
+                    <!-- end widget div -->
+                </div>
+                <!-- end widget -->
+            </div>
+        </div>
+    </div>
+    <!-- ui-dialog -->
+    <div id="dialog_error" title="Error">
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            var d = new Date();
+            $("#inbCustomsStartDate").data("kendoDatePicker").value(d);
+            $("#inbCustomsStopDate").data("kendoDatePicker").value(d);
+
+            $("#inbCustomsStartDate").data("kendoDatePicker").enable(false);
+            $("#inbCustomsStopDate").data("kendoDatePicker").enable(false);
+
+            $('input[name="importdate"]:radio').on('change', function (e) {
+                var itemSelected = $('input:radio[name=importdate]:checked').val();
+                if (itemSelected == "0") { 
+                    $("#inbYearList").data("kendoComboBox").enable(true);
+                    $("#inbMonthList").data("kendoComboBox").enable(true);
+                    $("#inbCustomsStartDate").data("kendoDatePicker").enable(false);
+                    $("#inbCustomsStopDate").data("kendoDatePicker").enable(false);
+                }
+                else {
+                    $("#inbYearList").data("kendoComboBox").enable(false);
+                    $("#inbMonthList").data("kendoComboBox").enable(false);
+                    $("#inbCustomsStartDate").data("kendoDatePicker").enable(true);
+                    $("#inbCustomsStopDate").data("kendoDatePicker").enable(true);
+                }
+            });
+            /*
+            * CONVERT DIALOG TITLE TO HTML
+            * REF: http://stackoverflow.com/questions/14488774/using-html-in-a-dialogs-title-in-jquery-ui-1-10
+            */
+
+            $.widget("ui.dialog", $.extend({}, $.ui.dialog.prototype, {
+                _title: function (title) {
+                    if (!this.options.title) {
+                        title.html("&#160;");
+                    } else {
+                        title.html(this.options.title);
+                    }
+                }
+            }));
+
+            $('#dialog_error').dialog({
+                autoOpen: false,
+                width: 600,
+                resizable: false,
+                modal: true,
+                title: "<div class='widget-header'><h4><i class='fa fa-warning'></i> รายงานของที่นำเข้าเก็บในคลังสินค้าทัณฑ์บนฯ</h4></div>",
+                buttons: [{
+                    html: "<i class='fa fa-times'></i>&nbsp; Close",
+                    "class": "btn btn-danger",
+                    click: function () {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+           
+            var dataSource = new kendo.data.DataSource({
+                transport: {
+                    read: {
+                        url: ('@Url.Action("GetStorers","Helper")'),
+                        dataType: "json"
+                    }
+                }
+            });
+
+            $("#inbYearList").kendoComboBox({
+                dataSource: getYears(),
+                height: 100,
+                index : 0
+            })
+           
+            $("#inbMonthList").kendoComboBox({
+                dataTextField: "text",
+                dataValueField: "value",
+                dataSource: getMonths(),
+                index : 0,
+                height: 100
+            })
+            $("#inbMonthList").data("kendoComboBox").value(("0" + (d.getMonth() + 1)).slice(-2));
+
+            $("#importerSelect").kendoMultiSelect({
+                dataSource: dataSource,
+                dataTextField: "Company",
+                dataValueField: "StorerKey"
+            });
+
+            var inbTypeDataSource = new kendo.data.DataSource({
+                transport: {
+                    read: {
+                        url: ('@Url.Action("GetDeclarationType", "Helper")'),
+                        dataType: "json"
+                    }
+                }
+            });
+
+            $("#inbDeclarationType").kendoMultiSelect({
+                dataSource: inbTypeDataSource,
+                dataTextField: "Description",
+                dataValueField: "Code",
+                autoClose: false
+            })
+
+            $('#inboundExportExcel').click(function (e) {
+                e.preventDefault();
+
+                var datetimestart = $("#inbCustomsStartDate").data("kendoDatePicker");
+                var datetimestop = $("#inbCustomsStopDate").data("kendoDatePicker");
+                var datStart = kendo.toString(datetimestart.value(), "yyyy-MM-dd") + ' ' + '00:00:00';
+                var datStop = kendo.toString(datetimestop.value(), "yyyy-MM-dd") + ' ' + '23:59:59';
+                var yearSelected = $('#inbYearList').val();
+                var monthSelected = $('#inbMonthList').val();
+                var c = $('#inbMonthList');
+                var monthNameSelected = c.data('kendoComboBox').text();
+                var dt = $("#inbDeclarationType").data("kendoMultiSelect");
+                var declarationType = dt.value();
+                var ms = $("#importerSelect").data("kendoMultiSelect");
+                var importers = ms.value();
+                var dateType = $('input[name="importdate"]:checked').val();
+                var productCode = $('#productCode').val();
+             
+                var ai = {
+                    DateType: dateType,
+                    StartDate: datStart,
+                    StopDate: datStop,
+                    YearSelected: yearSelected,
+                    MonthSelected: monthSelected,
+                    MonthNameSelected: monthNameSelected,
+                    DeclarationType: declarationType,
+                    Importers: importers,
+                    Sku: productCode
+                };
+
+                debugger
+
+                var d = new Date();
+                $("#inboundExportExcel").prop("disabled", true);
+               
+                $.ajax({
+                    url: '@Url.Action("ExportMovementReport", "CustomsReport")',
+                    type: 'POST',
+                    data: JSON.stringify(ai),
+                    contentType: "application/json; charset=utf-8",
+                    success: function (data) {
+                        if (data.Result) {
+                            if (data.RecordCount == 0) {
+                                $('#dialog_error').html("<p>" + data.ErrorMessage + "</p>");
+                                $('#dialog_error').dialog('open');
+                            }
+                            else {
+                                
+                                var url = '@Url.Action("Download", "CustomsReport")?fileGuid=' + data.FileGuid + '&filename=' + data.FileName;
+                                window.location = url;
+                                var n = d.getSeconds();
+                                $.smallBox({
+                                    title: "สร้างรายงานการเคลื่อนไหวสินค้าของของที่นำเข้าสำเร็จ ",
+                                    content: "<i class='fa fa-clock-o'></i> <i>" + n + " วินาที...</i>",
+                                    color: "#296191",
+                                    iconSmall: "fa fa-thumbs-up bounce animated",
+                                    timeout: 4000
+                                });
+                            }
+                        }
+                        else {
+                            $('#dialog_error').html("<p>" + data.ErrorMessage + "</p>");
+                            $('#dialog_error').dialog('open');
+                        }
+                        $("#inboundExportExcel").removeAttr('disabled');
+                    },
+                    error: function (xhr) {
+                        $('#dialog_error').html("<p>" + xhr.responseText + "</p>");
+                        $('#dialog_error').dialog('open');
+                        $("#inboundExportExcel").removeAttr('disabled');
+                    }
+                });
+
+            });
+        });
+
+    </script>
+
+</div>

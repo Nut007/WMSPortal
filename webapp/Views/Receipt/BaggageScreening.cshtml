@@ -1,0 +1,984 @@
+﻿@using WMSPortal.ViewModels;
+@model BaggageListViewModel
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+}
+@helper ToolbarTemplate()
+{
+    <a class="k-button k-button-icontext k-grid-add"><span><img src="~/Content/img/add.png" /></span> Add new item</a>
+}
+
+<div id="content">
+    <style>
+        th.dispatch, th.recno {
+            width: 10%;
+        }
+
+        th.no {
+            width: 30px;
+        }
+
+        td.highlight {
+            font-weight: bold;
+            background-color: yellow;
+        }
+
+        input[type=search]::-webkit-input-placeholder { /* Safari, Chrome(, Opera?) */
+            color: gray;
+            font-style: italic;
+        }
+
+        input[type=search]:-moz-placeholder { /* Firefox 18- */
+            color: gray;
+            font-style: italic;
+        }
+
+        input[type=search]::-moz-placeholder { /* Firefox 19+ */
+            color: gray;
+            font-style: italic;
+        }
+
+        input[type=search]:-ms-input-placeholder { /* IE (10+?) */
+            color: gray;
+            font-style: italic;
+        }
+
+        .toolbar {
+            float: right;
+        }
+    </style>
+    <script>
+        function serviceModeFields_Select(e) {
+            $("#cboMawb").data("kendoComboBox").value('')
+            document.getElementById('btnClearList').click();
+            var target;
+            var dataItem = this.dataItem(e.item);
+            VisibleMode(dataItem.Value);
+        }
+
+        function AddnewbaggagePopUp_onClose(e) {
+            $("#getBaggageInfo").click();
+        }
+        function AddCN38_onClose(e) {
+            var mawb = $("#cboMawb").data("kendoComboBox").value();
+            GetCNByMawb(mawb);
+        }
+        function AddCN38_onOpen(e) {
+            kendo.ui.progress(e.sender.element, true);
+        }
+        function AddCN38_onRefresh(e) {
+            kendo.ui.progress(e.sender.element, false);
+        }
+        function MAWB_Select(e) {
+            var type = $("#serviceModeFields").data("kendoComboBox").value();
+            if (type == "PRE-BOOKING") {
+                var dataItem = this.dataItem(e.item);
+                if (dataItem != null)
+                    GetCNByMawb(dataItem.Code);
+            }
+        }
+    </script>
+    @*<link href="~/Content/jQuery.FileUpload/css/jquery.fileupload.css" rel="stylesheet" />
+        <link href="~/Content/uploader/uploader-style.css" rel="stylesheet" />
+
+        <script src="~/Scripts/jQuery.FileUpload/jquery.iframe-transport.js"></script>
+        <script src="~/Scripts/jQuery.FileUpload/jquery.fileupload.js"></script>
+        <script src="~/Scripts/fileupload/" type="text/javascript"></script>
+        <script src="~/Scripts/fileupload/Uploader-Common.js"></script>
+        <script src="~/Scripts/fileupload/Uploader-single.core.js" type="text/javascript"></script>
+        <script src="~/Scripts/blockUI/jquery.blockUI.js"></script>*@
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="form-group">
+                Service Mode:
+            </div>
+            <div class="form-group">
+                @(Html.Kendo().DropDownList()
+                        .Name("serviceModeFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "RECEIPT",
+                                Value = "RECEIPT"
+                            },
+                             new SelectListItem() {
+                                Text = "PRE-BOOKING",
+                                Value = "BOOKING"
+                            },
+                             new SelectListItem() {
+                                Text = "MANIFEST",
+                                Value = "MANIFEST"
+                            },
+                             new SelectListItem() {
+                                Text = "UN-MANIFEST",
+                                Value = "UN-MANIFEST"
+                            },
+                             new SelectListItem() {
+                                Text = "MANIFEST (NO VALIDATION)",
+                                Value = "MANIFESTNOVALIDATION"
+                            }
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("serviceModeFields_Select");
+                        })
+                        .Value("RECEIPT")
+                        .HtmlAttributes(new { style = "width:185px" })
+                )
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="form-group text-booking">
+                <div class="column"><label>MAWB</label></div>
+                <input id="cboMawb" />
+            </div>
+        </div>
+        <div class="col-sm-12">
+            <div class="form-group text-filter">
+                <div class="column"><label>ULD Number :</label></div>
+                <input id="containerNo" type="search" class="k-textbox" style="width: 185px;" placeholder="ULD Number" />
+                <button type="button" id="getBaggageInfo" class="k-button">Refresh</button>
+            </div>
+        </div>
+        <div class="col-sm-12">
+            <div class="form-group text-packing">
+                <div class="column"><label>Packing No :</label></div>
+                <input id="packingNo" type="text" class="k-textbox" style="width: 185px;" />
+                <button type="button" id="addBaggage" class="k-button  k-primary" onclick="addNewBaggage()">Add Baggage</button>
+                <button type="button" id="clearBaggage" class="k-button" onclick="ClearBaggage()">Clear</button>
+                <button type="button" id="btnClearList" class="k-button">Clear List</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row packing">
+        <div class="col-sm-12">
+            <div class="col-sm-11">
+                <div class="widget-body no-padding">
+                    <table id="tblBaggage" class="display projects-table table table-striped table-bordered table-hover" cellspacing="0" width="100%">
+                        <thead>
+                            <tr>
+                                <th><input name="select_all" value="1" id="tblBaggage-select-all" type="checkbox" /></th>
+                                <th class="no">No#</th>
+                                <th class="dispatch">Dispatch No</th>
+                                <th class="recno">Rec No</th>
+                                <th>Origin Post</th>
+                                <th>Destination</th>
+                                <th>Gross Weight</th>
+                                <th>Mawb</th>
+                                <th>ULD No</th>
+                                <th>Tag No</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row padding-bottom-10 padding-top-5 booking">
+        <div class="col-sm-12">
+            <div class="text-left">
+                <button id="btnAddCN38" type="button" class="btn btn-primary" onclick="addCN38()">
+                    <span class="glyphicon glyphicon-plus-sign"></span> Add CN38
+                </button>
+                <button id="btnDeleteCN38Rows" type="button" class="btn btn-danger">
+                    <span class="glyphicon glyphicon glyphicon-trash"></span> Remove CN38
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="row booking">
+        <div class="col-sm-12">
+            <div class="col-sm-11">
+                <div class="widget-body no-padding">
+                    <table id="tblCN38" class="display projects-table table table-striped table-bordered table-hover" cellspacing="0" width="100%">
+                        <thead>
+                            <tr>
+                                <th><input name="cn38_select_all" value="1" id="tblCN38-select-all" type="checkbox" /></th>
+                                <th>CN38</th>
+                                <th>Despatch Qty</th>
+                                <th>Pieces</th>
+                                <th>Gross Weight</th>
+                                <th>Mawb</th>
+                            </tr>
+                        </thead>
+                        <tfoot>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="cnInfo" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header md-reason-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">CN List</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <div class="column"><label>CN38 No :</label></div>
+                                <textarea id="cn38List" class="k-textbox" rows="10" cols="50"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="tags"> Material :</label>
+                                <input class="form-control" id="captionMaterialCode" type="text" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button id="SaveWithReason" type="button" class="btn btn-primary">
+                        Save work order
+                    </button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+
+    @(Html.Kendo().Window()
+        .Name("addnewbaggagePopUp")
+        .Visible(false)
+        .Modal(true)
+        .Width(450)
+        .Height(400)
+        .Position(settings => settings.Top(70).Left(200))
+        .Title("Add new baggage")
+        .Content("")
+        .Iframe(true)
+        .Animation(false)
+        .Resizable()
+        .Draggable()
+        .Events(events => events
+        .Close("AddnewbaggagePopUp_onClose")
+    )
+    )
+    @(Html.Kendo().Window()
+        .Name("addCN38Popup")
+        .Visible(false)
+        .Modal(true)
+        .Width(800)
+        .Height(600)
+        .Position(settings => settings.Top(70))
+        .Title("Add CN38")
+        .Content("")
+        .Iframe(true)
+        .Animation(false)
+        .Resizable()
+        .Draggable()
+        .Events(events => events
+            .Close("AddCN38_onClose")
+            .Open("AddCN38_onOpen")
+            .Refresh("AddCN38_onRefresh")
+        )
+    )
+
+    <script>
+        $(document).ready(function () {
+            $("#packingNo").focus().select();
+            VisibleMode("RECEIPT");
+            var table = $('#tblBaggage').DataTable({
+                'createdRow': function (row, data, index) {
+                    var recStatus = data[7].substring(0, 1);
+                    if (recStatus == "0") {
+                        $(row).addClass('highlight');
+                    }
+                },
+                'bFilter': false,
+                'dom': '<"toolbar"><"top"i>rt<"bottom"flp><"clear">',
+                'columnDefs': [{
+                    'targets': 0,
+                    'searchable': false,
+                    'orderable': false,
+                    'width': '1%',
+                    'className': 'dt-body-center',
+                    'render': function (data, type, full, meta) {
+                        return '<input type="checkbox" name="id[]" value="'
+                           + $('<div/>').text(data).html() + '">';
+                    }
+                },
+                 {
+                     "targets": [7],
+                     "visible": false
+                 }],
+                'order': [1, 'desc']
+            });
+            //$("div.toolbar").html('<button type="button" id="btnDeleteRows" class="k-button"> <span class="k-icon k-i-ungroup"></span> Delete Lines</button>');
+            $("div.toolbar").html('<button id="btnDeleteRows" type="button" class="btn btn-danger"><span class="glyphicon glyphicon glyphicon-trash"></span> Remove Items</button>');
+            function cboMawb_onSelect(e) {
+                if (e.item) {
+                    var dataItem = this.dataItem(e.item.index());
+                    GetCNByMawb(dataItem.Code);
+                }
+            };
+
+            var dataSource = new kendo.data.DataSource({
+                transport: {
+                    read: {
+                        url: '@Url.Action("GetMawbList", "Helper")',
+                        dataType: "json"
+                    }
+                }
+            });
+            $("#cboMawb").kendoComboBox({
+                dataTextField: "Code",
+                dataValueField: "Code",
+                dataSource: dataSource,
+                select: cboMawb_onSelect,
+                filter: "contains",
+                suggest: true
+            });
+
+            var tableCN38 = $('#tblCN38').DataTable({
+                "footerCallback": function (row, data, start, end, display) {
+                    var api = this.api(), data;
+
+                    // Remove the formatting to get integer data for summation
+                    var intVal = function (i) {
+                        return typeof i === 'string' ?
+                            i.replace(/[\$,]/g, '') * 1 :
+                            typeof i === 'number' ?
+                            i : 0;
+                    };
+
+                    // Total over all pages
+                    total = api
+                        .column(2)
+                        .data()
+                        .reduce(function (a, b) {
+                            return intVal(a) + intVal(b);
+                        }, 0);
+
+                    // Total over this page
+                    pageTotal = api
+                        .column(2, { page: 'current' })
+                        .data()
+                        .reduce(function (a, b) {
+                            return intVal(a) + intVal(b);
+                        }, 0);
+
+
+                    totalBages = api
+                        .column(4, { page: 'current' })
+                        .data()
+                        .reduce(function (a, b) {
+                            return intVal(a) + intVal(b);
+                        }, 0);
+
+                    totalWeight = api
+                        .column(3, { page: 'current' })
+                        .data()
+                        .reduce(function (a, b) {
+                            return intVal(a) + intVal(b);
+                        }, 0);
+
+                    var numFormat = $.fn.dataTable.render.number('\,', '.', 2, '').display;
+
+
+                    $(api.column(2).footer()).html(
+                        'Sum = ' + total
+                    );
+                    $(api.column(3).footer()).html(
+                      'Sum = ' + numFormat(totalWeight)
+                    );
+                    $(api.column(4).footer()).html(
+                     'Sum = ' + totalBages
+                   );
+                },
+                'createdRow': function (row, data, index) {
+                    //
+                },
+                'bFilter': false,
+                "bInfo": true,
+                'dom': '<"toolbar"><"top"i>rt<"bottom"flp><"clear">',
+                'columnDefs': [{
+                    'targets': 0,
+                    'searchable': false,
+                    'orderable': false,
+                    'width': '1%',
+                    'className': 'dt-body-center',
+                    'render': function (data, type, full, meta) {
+                        return '<input type="checkbox" name="idx[]" value="'
+                           + $('<div/>').text(data).html() + '">';
+                    }
+                }],
+                'order': [1, 'desc']
+            });
+            $("#btnClearList").click(function () {
+                tableCN38.clear().draw();
+                table.clear().draw();
+                $("#packingNo").val('');
+                $("#packingNo").focus().select();
+            });
+            $("#btnDeleteCN38Rows").click(function () {
+                $.when(kendo.ui.ExtOkCancelDialog.show({
+                    title: "Delete",
+                    message: "Do you want to delete item?",
+                    icon: "k-ext-warning"
+                })
+                ).done(function (response) {
+                    if (response.button != "Cancel") {
+                        var mawb = $("#cboMawb").data("kendoComboBox").value();
+                        selItems = getCN38Selected();
+                        $.ajax({
+                            url: '@Url.Action("DeleteCN38Items", "Receipt")',
+                            type: 'post',
+                            data: { mawb: mawb, cn38: selItems },
+                            success: function (data) {
+                                if (data.isValid == null) {
+                                    GetCNByMawb(mawb);
+                                    //var ch = $('#tblCN38').find('tbody input[type=checkbox]');
+                                    //ch.each(function () {
+                                    //    var $this = $(this);
+                                    //    if ($this.is(':checked')) {
+                                    //        sel = true;
+                                    //        $(this).closest("tr").find("td")[1].innerText
+                                    //        $this.parents('tr').fadeOut(function () {
+                                    //            $this.remove();
+                                    //        });
+                                    //    }
+                                    //});
+                                }
+                                else {
+                                    $.when(kendo.ui.ExtAlertDialog.show({
+                                        title: "Error",
+                                        message: data.exceptionErrorMessage,
+                                        icon: "k-ext-error",
+                                        width: 500,
+                                        height: 120
+                                    }))
+                                }
+                            },
+                            complete: function (data) {
+                                //
+                            },
+                            error: function (xhr) {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: xhr.responseText,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        });
+                    }
+                });
+            });
+            $("#btnDeleteRows").click(function () {
+                $.when(kendo.ui.ExtOkCancelDialog.show({
+                    title: "Delete",
+                    message: "Do you want to delete item?",
+                    icon: "k-ext-warning"
+                })
+                ).done(function (response) {
+                    console.log(kendo.format("{0} button clicked",
+                        response.button));
+                    if (response.button != "Cancel") {
+                        selItems = getSelectedItems();
+                        $.ajax({
+                            url: '@Url.Action("DeleteBaggageItems", "Receipt")',
+                            type: 'post',
+                            data: { bagId: selItems, type: $("#serviceModeFields").val() },
+                            success: function (data) {
+                                if (data.isValid == null) {
+                                    $("#getBaggageInfo").click();
+                                    //var ch = $('#tblBaggage').find('tbody input[type=checkbox]');
+                                    //ch.each(function () {
+                                    //    var $this = $(this);
+                                    //    if ($this.is(':checked')) {
+                                    //        sel = true;
+                                           
+                                    //        //$(this).closest("tr").find("td")[1].innerText
+                                    //        //$this.parents('tr').fadeOut(function () {
+                                                
+                                    //        //    //table.row('.selected').remove().draw();
+                                    //        //    //$this.remove();
+                                    //        //    //table.row().draw();
+                                    //        //});
+                                    //    }
+                                    //});
+                                }
+                                else {
+                                    $.when(kendo.ui.ExtAlertDialog.show({
+                                        title: "Error",
+                                        message: data.exceptionErrorMessage,
+                                        icon: "k-ext-error",
+                                        width: 500,
+                                        height: 120
+                                    }))
+                                }
+                            },
+                            complete: function (data) {
+                                //
+                            },
+                            error: function (xhr) {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: xhr.responseText,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('#tblBaggage-select-all').on('click', function () {
+                var rows = table.rows({ 'search': 'applied' }).nodes();
+                $('input[type="checkbox"]', rows).prop('checked', this.checked);
+            });
+            $('#tblCN38-select-all').on('click', function () {
+                var rows = tableCN38.rows({ 'search': 'applied' }).nodes();
+                $('input[type="checkbox"]', rows).prop('checked', this.checked);
+            });
+            // Handle click on checkbox to set state of "Select all" control
+            $('#tblBaggage tbody').on('change', 'input[type="checkbox"]', function () {
+                // If checkbox is not checked
+                if (!this.checked) {
+                    var el = $('#tblBaggage-select-all').get(0);
+                    // If "Select all" control is checked and has 'indeterminate' property
+                    if (el && el.checked && ('indeterminate' in el)) {
+                        // Set visual state of "Select all" control
+                        // as 'indeterminate'
+                        el.indeterminate = true;
+                    }
+                }
+            });
+
+            $('#tblCN38 tbody').on('change', 'input[type="checkbox"]', function () {
+                // If checkbox is not checked
+                if (!this.checked) {
+                    var el = $('#tblCN38-select-all').get(0);
+                    // If "Select all" control is checked and has 'indeterminate' property
+                    if (el && el.checked && ('indeterminate' in el)) {
+                        // Set visual state of "Select all" control
+                        // as 'indeterminate'
+                        el.indeterminate = true;
+                    }
+                }
+            });
+            var counter = 0;
+
+            $('#packingNo').keydown(function (e) {
+                if (e.keyCode == 13) {
+                    if ($("#serviceModeFields").val() == "MANIFEST" || "MANIFESTNOVALIDATION") {
+                        if ($("#containerNo").val() == "") {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: "Require ULD NO.",
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                            $("#containerNo").focus().select();
+                            return;
+                        }
+                        var mawb = $("#cboMawb").data("kendoComboBox").value();
+                        $.ajax({
+                            url: '@Url.Action("AddBaggage", "Receipt")',
+                            type: 'post',
+                            data: { tagNo: $("#packingNo").val(), uldNo: $("#containerNo").val(), mawb: mawb, type : $("#serviceModeFields").val() },
+                            success: function (data) {
+                                if (data.isValid == null) {
+                                    table.row.add([
+                                    'false',
+                                    counter,
+                                    data.DESPATCH_NO,
+                                    data.RECEPTACLE_NO,
+                                    data.ORIGIN_POST_CODE,
+                                    data.DESTINATION_POST_CODE,
+                                    data.GROSS_WEIGHT,
+                                    data.MASTER_ID,
+                                    data.PCNO,
+                                    data.ID
+                                    ]).draw(false);
+
+                                    $("#packingNo").val('');
+                                    $("#packingNo").focus().select();
+                                    counter++;
+                                }
+                                else {
+                                    $.when(kendo.ui.ExtAlertDialog.show({
+                                        title: "Error",
+                                        message: data.exceptionErrorMessage,
+                                        icon: "k-ext-error",
+                                        width: 500,
+                                        height: 120
+                                    }))
+                                    $("#packingNo").focus().select();
+                                }
+                            },
+                            complete: function (data) {
+                                //
+                            },
+                            error: function (xhr) {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: xhr.responseText,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                                $("#packingNo").focus().select();
+                            }
+                        });
+                      
+                    }
+                    if ($("#serviceModeFields").val() == "UN-MANIFEST") {
+                        if ($("#packingNo").val() == "") {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: "Require Baggage No.",
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                            $("#packingNo").focus().select();
+                            return;
+                        }
+                        var bagIds = [];
+                        bagIds.push($("#packingNo").val());
+                        $.ajax({
+                            url: '@Url.Action("UnManifestBaggage", "Receipt")',
+                            type: 'post',
+                            data: { bagId: bagIds },
+                            success: function (data) {
+                                if (data.isValid == null) {
+                                    $.smallBox({
+                                        title: "UnManifest Baggage ",
+                                        content: $("#packingNo").val() + " has been unmanifest</i>",
+                                        color: "#296191",
+                                        iconSmall: "fa fa-check-circle bounce animated",
+                                        timeout: 3000
+                                    });
+                                    $("#packingNo").val('');
+                                    $("#packingNo").focus().select();
+                                }
+                                else {
+                                    $.when(kendo.ui.ExtAlertDialog.show({
+                                        title: "Error",
+                                        message: data.exceptionErrorMessage,
+                                        icon: "k-ext-error",
+                                        width: 500,
+                                        height: 120
+                                    }))
+                                    $("#packingNo").focus().select();
+                                }
+                            },
+                            error: function (xhr) {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: xhr.responseText,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                                $("#packingNo").focus().select();
+                            }
+                        });
+                    }
+                    else if ($("#serviceModeFields").val() == "RECEIPT") {
+                        $.ajax({
+                            url: '@Url.Action("AddBaggage", "Receipt")',
+                            type: 'post',
+                            data: { tagNo: $("#packingNo").val(), uldNo: $("#containerNo").val() },
+                            success: function (data) {
+                                if (data.isValid == null) {
+                                    table.row.add([
+                                    'false',
+                                    counter,
+                                    data.DESPATCH_NO,
+                                    data.RECEPTACLE_NO,
+                                    data.ORIGIN_POST_CODE,
+                                    data.DESTINATION_POST_CODE,
+                                    data.GROSS_WEIGHT,
+                                    data.MASTER_ID,
+                                    data.PCNO,
+                                    data.ID
+                                    ]).draw(false);
+
+                                    $("#packingNo").val('');
+                                    $("#packingNo").focus().select();
+                                    counter++;
+                                }
+                                else {
+                                    $.when(kendo.ui.ExtAlertDialog.show({
+                                        title: "Error",
+                                        message: data.exceptionErrorMessage,
+                                        icon: "k-ext-error",
+                                        width: 500,
+                                        height: 120
+                                    }))
+                                    $("#packingNo").focus().select();
+                                }
+                            },
+                            complete: function (data) {
+                                //
+                            },
+                            error: function (xhr) {
+                                $.when(kendo.ui.ExtAlertDialog.show({
+                                    title: "Error",
+                                    message: xhr.responseText,
+                                    icon: "k-ext-error",
+                                    width: 500,
+                                    height: 120
+                                }))
+                                $("#packingNo").focus().select();
+                            }
+                        });
+                       
+                    }
+
+                }
+
+
+            });
+
+
+            $("#getBaggageInfo").click(function () {
+                counter = 1;
+                var mawb = $("#cboMawb").data("kendoComboBox").value();
+                $.ajax({
+                    url: '@Url.Action("GetMawbBaggages", "Receipt")',
+                    type: 'POST',
+                    datatype: 'json',
+                    data: {
+                        mawb: mawb,
+                        containerNo: $("#containerNo").val(),
+                    },
+                    success: function (data) {
+                        if (data.isValid == null) {
+                            table.clear().draw();
+                            for (var i = 0; i < data.Data.length; i++) {
+                                table.row.add([
+                                'false',
+                                counter,
+                                data.Data[i].DESPATCH_NO,
+                                data.Data[i].RECEPTACLE_NO,
+                                data.Data[i].ORIGIN_POST_CODE,
+                                data.Data[i].DESTINATION_PORT,
+                                data.Data[i].GROSS_WEIGHT,
+                                data.Data[i].MASTER_ID,
+                                data.Data[i].PCNO,
+                                data.Data[i].ID
+                                ]).draw(false);
+                                counter++;
+                            }
+                        }
+                        else {
+                            $.when(kendo.ui.ExtAlertDialog.show({
+                                title: "Error",
+                                message: data.exceptionErrorMessage,
+                                icon: "k-ext-error",
+                                width: 500,
+                                height: 120
+                            }))
+                            $("#containerNo").focus().select();
+                        }
+                    },
+                    complete: function (data) {
+                        //
+                    },
+                    error: function (xhr) {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: xhr.responseText,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                        $("#packingNo").focus().select();
+                    }
+                });
+            });
+        });
+
+        function addNewBaggage() {
+        
+            var win = $("#addnewbaggagePopUp").data("kendoWindow");
+            if (win != null) {
+                var mawb = $("#cboMawb").data("kendoComboBox").value();
+                var containerno = $("#containerNo").val();
+                var url = '@Url.Action("AddNewBaggage", "Receipt")?mawb=' + mawb + '&containerno=' + containerno;
+                win.refresh(url);
+                win.open();
+                win.center();
+            }
+        }
+        function addCN38() {
+            var mawb = $("#cboMawb").data("kendoComboBox").value();
+            var win = $("#addCN38Popup").data("kendoWindow");
+            if (win != null) {
+                var url = '@Url.Action("AddCN38", "Receipt")?mawb=' + mawb;
+                win.refresh(url);
+                win.open();
+                win.center();
+            }
+        }
+        // get selected checkboxes
+        function getSelectedItems() {
+            var selchbox = [];
+            var ch = $('#tblBaggage').find('tbody input[type=checkbox]');
+            ch.each(function () {
+                var $this = $(this);
+                if ($this.is(':checked')) {
+                    sel = true; //set to true if there is/are selected row
+                    transId = $(this).closest("tr").find("td")[8].innerText
+                    if (transId.split("|").length == 1)
+                        selchbox.push(transId);
+                    else
+                        selchbox.push(transId.split("|")[1]);
+                }
+            });
+
+            return selchbox;
+        }
+        // get selected checkboxes
+        function getCN38Selected() {
+            var selchbox = [];
+            var oTable = $("#tblCN38").dataTable();
+            $("input:checkbox", oTable.fnGetNodes()).each(function () {
+                var isChecked = $(this).is(":checked");
+                if (isChecked) {
+                    transId = $(this).closest("tr").find("td")[1].innerText
+                    selchbox.push(transId);
+                }
+            })
+            return selchbox;
+        }
+        function savePackage() {
+            var nrow = "<tr><th>new_row</th><th>new_row</th><th>new_row</th><th>new_row</th><th>new_row</th></tr>";
+            $("#tablePackages tr:last").after(nrow);
+            or
+            $("#tablePackages").append(nrow);
+        }
+
+        function ClearBaggage() {
+            if ($("#serviceModeFields").val() == "MANIFEST") {
+                $("#packingNo").val('');
+                $("#containerNo").val('');
+                $("#containerNo").focus().select();
+            } else {
+                $("#packingNo").val('');
+                $("#packingNo").focus().select();
+            }
+        }
+        function fnAddRow(obj) {
+            $('#tblCN38').dataTable().fnAddData([
+                false,
+                obj.LOT,
+                obj.DESPATCH_NO,
+                obj.PACKUNIT,
+                obj.GROSS_WEIGHT,
+                obj.MAWB]);
+        }
+        function VisibleMode(mode) {
+            $(".text-filter").hide();
+            $(".text-booking").hide();
+            $(".text-packing").hide();
+            $(".booking").hide();
+            $(".packing").hide();
+            $("#packingNo").val('');
+            $("#containerNo").val('');
+            if (mode == "MANIFEST" || mode == "MANIFESTNOVALIDATION") {
+                $(".text-booking").show();
+                $(".text-filter").show();
+                $(".text-packing").show();
+                $(".packing").show();
+                $("#containerNo").focus().select();
+            }
+            else if (mode == "BOOKING") {
+                $(".text-booking").show();
+                $(".booking").show();
+                $('#mawb').focus();
+            } else if (mode == "UN-MANIFEST") {
+                $(".text-packing").show();
+                $("#containerNo").focus().select();
+            }
+            else {
+                $(".text-packing").show();
+                $("#packingNo").focus().select();
+                $(".packing").show();
+            }
+        }
+        function GetCNByMawb(mawb) {
+            $.ajax({
+                url: '@Url.Action("GetMawbItems", "Receipt")',
+                type: 'POST',
+                datatype: 'json',
+                data: {
+                    mawb: mawb,
+                },
+                success: function (data) {
+                    if (data.isValid == null) {
+                        var tableCN38 = $("#tblCN38").dataTable();
+                        tableCN38.fnClearTable();
+                        for (var i = 0; i < data.Data.length; i++) {
+                            fnAddRow(data.Data[i]);
+                        }
+                        //for (var i = 0; i < data.Data.length; i++) {
+                        //    tableCN38.row.add([
+                        //    'false',
+                        //    data.Data[i].LOT,
+                        //    data.Data[i].DESPATCH_NO,
+                        //    data.Data[i].DESTINATION_PORT,
+                        //    data.Data[i].MAWB,
+                        //    data.Data[i].GROSS_WEIGHT,
+                        //    data.Data[i].PACKUNIT
+                        //    ]).draw(false);
+                        //}
+                    }
+                    else {
+                        $.when(kendo.ui.ExtAlertDialog.show({
+                            title: "Error",
+                            message: data.exceptionErrorMessage,
+                            icon: "k-ext-error",
+                            width: 500,
+                            height: 120
+                        }))
+                    }
+                },
+                complete: function (data) {
+                    //
+                },
+                error: function (xhr) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: xhr.responseText,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                    $("#cn38List").focus().select();
+                }
+            });
+        }
+    </script>
+
+</div>

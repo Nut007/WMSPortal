@@ -1,0 +1,36 @@
+﻿
+<script>
+function parameterGridInfo() {
+    var item = $('#reports').data("kendoDropDownList");
+    return {
+        storeProcedureName:item.value()
+    }
+    }
+
+</script>
+<div>
+    @(Html.Kendo().Grid<WMSPortal.Core.Model.StoreProcedure>()
+        .Name("parameterGrid")
+        .Editable(editable => editable.Mode(GridEditMode.InCell))
+        .Columns(columns =>
+        {
+            columns.Bound(p => p.COLUMN_NAME).Width(100).Title("Field Name");
+            columns.Bound(p => p.TYPE_NAME).Width(100).Title("Field Type");
+            columns.Bound(p => p.COLUMN_VALUE).Title("Field Value");
+        })
+        //.HtmlAttributes(new { style = "height:550px;" })
+        .DataSource(dataSource => dataSource
+            .Ajax()
+            .PageSize(20)
+            .Read(read => read.Action("GetStoreProcedureColumns", "Helper").Data("parameterGridInfo"))
+            .Model(model =>
+            {
+                model.Id(p => p.COLUMN_NAME);
+                model.Field(p => p.COLUMN_NAME).Editable(false);
+                model.Field(p => p.TYPE_NAME).Editable(false);
+                model.Field(p => p.COLUMN_VALUE).Editable(true);
+            })
+         )
+    )
+    
+</div>

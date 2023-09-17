@@ -1,0 +1,99 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+}
+
+<div id="content">
+
+    <script>
+        $("#commodityfilter").keyup(function (event) {
+            if (event.keyCode == 13) {
+                SearchCommodity();
+            }
+        });
+        function additionalInfo() {
+            var pc = document.getElementById('commodityfilter').value;
+            return {
+                packageNo: pc
+            }
+        }
+        function grid_dataBound() {
+            var pc = document.getElementById('commodityfilter').value
+           
+            var displayedData = $("#commodityInfoGrid").data().kendoGrid.dataSource.view().toJSON()
+            if (displayedData.length == 0) {
+                document.getElementById("hmsg").innerHTML = "There is no DG GOODS in package no <code>" + pc + "</code>";
+                document.getElementById("ungrid").style.display = 'none';
+                document.getElementById("hmsg").className = "alert alert-success margin-bottom-5";
+            }
+            else {
+                document.getElementById("hmsg").innerHTML = "Found DG GOODS " + displayedData.length + " item(s) in package no <code>" + pc + "</code>";
+                document.getElementById("ungrid").style.display = 'inline';
+                document.getElementById("hmsg").className = "alert alert-danger margin-bottom-5";
+            }
+            
+            
+            document.getElementById("commodityfilter").focus();
+            document.getElementById("commodityfilter").select();
+        }
+    </script>
+
+    <div class="row padding-left-15">
+        <div class="form-group">
+            <label>Package No : </label>
+            <input id="commodityfilter" type="text" class="k-textbox textfilter" style="width: 150px;" placeholder="Type package code to filter..." value=@ViewBag.SkuFilter />
+            <button type="button" id="searchCommodity" class="k-button k-primary" onclick="SearchCommodity()">Search</button>
+        </div>
+    </div>
+    <div id="unmsg" style="display:inline;" class="padding-bottom-0"><h3 id="hmsg" class="alert alert-info margin-bottom-5">There is no DG GOODS in package no <code>.widget-body</code></h3></div>
+    <div class="row">
+        <div id="ungrid" class="col-md-12">
+            @(Html.Kendo().Grid<StockBalanceViewModel>()
+            .Name("commodityInfoGrid")
+            .Events(e => e
+                  .DataBound("grid_dataBound")
+              )
+
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.PcNo).Width(100);
+                columns.Bound(o => o.Sku).Width(150);
+                columns.Bound(o => o.Qty).Width(200);
+                columns.Bound(p => p.Loc).Width(150);
+            })
+            .Pageable()
+            .Sortable()
+            .Scrollable()
+            .DataSource(dataSource => dataSource
+                    .Ajax()
+                    .PageSize(100)
+                    .Model(model => model.Id(p => p.Id))
+                    .Read(read => read.Action("GetCommodityInfo", "StockBalance").Data("additionalInfo"))
+                    .ServerOperation(false)
+                )
+            )
+
+        </div>
+    </div>
+    <script>
+
+        $(document).ready(function () {
+            ResizeGrid();
+        });
+
+        function SearchCommodity() {
+            $("#commodityInfoGrid").data("kendoGrid").dataSource.read();
+        }
+        function ResizeGrid() {
+            var gridElement = $("#commodityInfoGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 260;
+            dataArea.height(gridHeight);
+        }
+    </script>
+
+</div>

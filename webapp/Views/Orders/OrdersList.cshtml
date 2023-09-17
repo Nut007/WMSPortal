@@ -1,0 +1,457 @@
+﻿@using WMSPortal.ViewModels;
+@{
+    Layout = Request.IsAjaxRequest() ? null : "~/Views/Shared/_Layout.cshtml";
+    WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
+
+}
+
+<div id="content">
+
+    <script>
+    function outboundFields_Select(e) {
+        var target;
+        var dataItem = this.dataItem(e.item);
+        if (dataItem.Value == "OrderDate" || dataItem.Value == "DeliveryDate")
+            target = ".date-filter";
+        else
+            target = ".textfilter";
+        VisibleFilter(target);
+    }
+
+    function orderLevel_Select(e) {
+        VisibleColumns($("#sectionView").data("kendoDropDownList").value());
+        SearchOutboundShipment();
+    }
+
+    function additionalInfo() {
+        var datetimestart = $("#outboundStartdate").data("kendoDatePicker");
+        var datetimestop = $("#outboundStopdate").data("kendoDatePicker");
+
+        if (datetimestart.value() == null) {
+            var todayDate = kendo.toString(kendo.parseDate(new Date()), 'dd/MM/yyyy');
+
+            $("#outboundStartdate").data("kendoDatePicker").value(todayDate);
+            $("#outboundStopdate").data("kendoDatePicker").value(todayDate);
+        }
+
+        var cat = $("#outboundFields").data("kendoDropDownList");
+        var sectionView = $("#sectionView").data("kendoDropDownList").value();
+
+        if (cat.value() == "OrderDate" || cat.value() == "DeliveryDate")
+            txtValue1 = kendo.toString(datetimestart.value(), "yyyy-MM-dd") + ' ' + '00:00:00';
+        else
+            txtValue1 = document.getElementById('outboundfilter').value;
+
+        var txtValue2 = kendo.toString(datetimestop.value(), "yyyy-MM-dd") + ' ' + '23:59:59';
+
+        var column = cat.value();
+        var value1 = txtValue1;
+        var value2 = txtValue2;
+        var userId = '@currentUser.UserName';
+            return {
+                column: column,
+                value1: value1,
+                value2: value2,
+                sectionView: sectionView,
+                userId: userId
+            }
+        }
+
+        function outboundGrid_onError(e) {
+            if (e.errors) {
+                var message = ""; //"Errors:\n";
+                var status = "";
+                $.each(e.errors, function (key, value) {
+                    status = key;
+                    if ('errors' in value) {
+                        $.each(value.errors, function () {
+                            message += this + "\n";
+                        });
+                    }
+                });
+
+
+                if (status.indexOf("ex") > -1) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: message,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+            }
+        }
+    </script>
+
+    <style>
+        #outboundGrid .k-grid-toolbar {
+            padding: .6em 1.3em;
+        }
+
+        .category-label {
+            vertical-align: middle;
+            padding-right: .5em;
+        }
+
+        #category {
+            vertical-align: middle;
+        }
+
+        .toolbar {
+            float: right;
+        }
+
+        a {
+            cursor: pointer;
+        }
+        #outboundGrid > .k-grid-header > div > table,
+        #outboundGrid > .k-grid-content > table
+        {
+           width: 100% !important;
+        }
+    </style>
+
+    <!-- ui-dialog -->
+    <div id="dialog_error" title="Error">
+    </div>
+   
+    <div class="row" id="header-content">
+        <div class="col-xs-6 col-md-4">
+            <h4 class="header-caption">Outbound Shipment</h4>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-8">
+            <div class="col-sm-12">
+                <div class="form-inline pull-right-sm">
+                    @Html.Label("Search By  ")
+                    <div class="form-group">
+                        @(Html.Kendo().DropDownList()
+                        .Name("outboundFields")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Order No",
+                                Value = "o.OrderKey"
+                            },
+                            new SelectListItem() {
+                                Text = "Order Date",
+                                Value = "OrderDate"
+                            },
+                             new SelectListItem() {
+                                Text = "Delivery Date",
+                                Value = "DeliveryDate"
+                            },
+                            new SelectListItem() {
+                                Text = "Customer Reference",
+                                Value = "o.ExternOrderKey"
+                            },
+                             new SelectListItem() {
+                                Text = "Export Entry",
+                                Value = "o.ShippingInstructions1"
+                            },
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("outboundFields_Select");
+                        })
+                        .Value("OrderDate")
+                        .HtmlAttributes(new { style = "width:185px" })
+                        )
+                    </div>
+                    <div class="form-group">
+                        <input id="outboundfilter" type="text" class="k-textbox textfilter" style="width: 185px;" placeholder="Type to filter..." />
+                        <div class="date-filter">
+                            @(Html.Kendo().DatePicker()
+                            .Name("outboundStartdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .ParseFormats(new string[] { "dd/MM/yyyy" })
+                            .HtmlAttributes(new { type = "text", @style = "width: 105px;" })
+                            )
+                            @(Html.Kendo().DatePicker()
+                            .Name("outboundStopdate")
+                            .Value(DateTime.Now)
+                            .Format("dd/MM/yyyy")
+                            .ParseFormats(new string[] { "dd/MM/yyyy" })
+                            .HtmlAttributes(new { type = "text", @style = "width: 105px;" })
+                            )
+                        </div>
+                    </div>
+                    <button type="button" id="searchOutboundShipment" class="k-button k-primary" onclick="SearchOutboundShipment()">Search</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 padding-top-5">
+            @(Html.Kendo().Grid<OrdersListViewModel>()
+            .Name("outboundGrid")
+            .AutoBind(false)
+            .EnableCustomBinding(true)
+            .Columns(columns =>
+            {
+                columns.Bound(o => o.Flag3).Width(17).ClientTemplate("# if (Flag3=='1') {  #" +
+                        "<img src='../Content/img/lock.png' />" + "# } #").Title("");
+                columns.Bound(o => o.OrderKey).ClientTemplate(" # if (1==1) { #" +
+                        "<a href='" + Url.Action("ShipmentOrders", "Orders") + "?orderKey=#= OrderKey #" + "'><span class=\"fa fa-pencil-square-o fa-2x\"></span></a>" +
+                        "# } else { #" +
+                        "<span class=\"fa fa-pencil-square-o fa-2x\"></span>" +
+                        "# } #").Width(17).Title("");
+                columns.Bound(o => o.OrderKey).ClientTemplate("<a onclick=\"ExportExcelOrdersTransection('#= OrderKey #')\" href='\\#'><span class=\"fa fa-file-excel-o fa-2x\"></span></a>").Width(17).Title("");
+                columns.Bound(o => o.Status).ClientTemplate(" # if (Status=='Open') { #" +
+                        "<div style='display:inline-block; width:50px' class='label label-warning label-as-badge'>#= Status #" + "</div>" +
+                        "# } else if (Status=='Released')  { #" +
+                        "<div style='display:inline-block; width:50px' class='label label-primary label-as-badge'>#= Status #" + "</div>" +
+                        "# } else { #" +
+                        "<div style='display:inline-block; width:50px' class='label label-success label-as-badge'>#= Status #" + "</div>" +
+                        "# } #").Width(35).Title("Status");
+                //columns.Bound(o => o.Flag3).Width(10).Title("");
+                columns.Bound(o => o.OrderDate).ClientTemplate("#= ConvertDateFormat(OrderDate) #").Width(50);
+                columns.Bound(o => o.DeliveryDate).ClientTemplate("#= ConvertDateFormat(DeliveryDate) #").Width(50);
+                columns.Bound(o => o.StorerKey).Width(80);
+                columns.Bound(o => o.OrderKey).ClientTemplate("#= ordersDetails(data) #").Width(60);
+                columns.Bound(o => o.LoadingPoint).Width(40);
+                columns.Bound(o => o.ExternOrderKey).Width(60);
+                columns.Bound(o => o.BuyerPO).Width(60);
+                columns.Bound(o => o.ShippingInstructions1).Width(65);
+                columns.Bound(o => o.Sku).Width(80).Hidden();
+                columns.Bound(o => o.SkuDescription).Width(120).Hidden();
+                columns.Bound(o => o.OpenQty).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.QtyAllocated).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.QtyPicked).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                columns.Bound(o => o.ShippedQty).Width(40).HtmlAttributes(new { style = "text-align: right" });
+                //columns.Bound(o => o.PackKey).Width(50);
+                //columns.Bound(o => o.UOM).Width(40);
+            })
+            .Excel(ex => ex.AllPages(true).FileName("OutboundReport_" + DateTime.Now.ToShortDateString() + ".xlsx"))
+            .ToolBar(toolbar =>
+            {
+                toolbar.Template(@<text>
+                    <div style="float: left;">
+                        <a class="k-button k-button-icontext k-grid-excel" href="#"><span class="k-icon k-i-excel"></span>Export to Excel</a>
+                    </div>
+                    <div class="toolbar">
+
+                        <label class="category-label" for="category">Section View :</label>
+                        @(Html.Kendo().DropDownList()
+                        .Name("sectionView")
+                        .DataTextField("Text")
+                        .DataValueField("Value")
+                        .BindTo(new List<SelectListItem>() {
+                            new SelectListItem() {
+                                Text = "Header",
+                                Value = "1"
+                            },
+                            new SelectListItem() {
+                                Text = "Detail",
+                                Value = "2"
+                            },
+                        })
+                        .Events(e =>
+                        {
+                            e.Change("orderLevel_Select");
+                        })
+                        .Value("Header")
+                        .HtmlAttributes(new { style = "width:185px" })
+                        )
+                    </div>
+                </text>);
+            })
+                                .Pageable()
+                                .Sortable()
+                                .Scrollable()
+                                .Excel(excel => excel
+                                    .FileName("OutboundReport.xlsx")
+                                    .Filterable(true)
+                                    .ProxyURL(Url.Action("ExportToExcel", "Orders"))
+                                )
+                                .DataSource(dataSource => dataSource
+                                .Ajax()
+                                .Events(events => events.Error("outboundGrid_onError"))
+                                .PageSize(50)
+                                .Model(model =>
+                                    {
+                                        model.Id(p => p.OrderKey);
+                                        model.Id(p => p.OrderLineNumber);
+                                    })
+                                .Read(read => read.Action("GetOutboundShipment", "Orders").Data("additionalInfo"))
+                                .ServerOperation(false)
+                                )
+            )
+
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            VisibleFilter(".date-filter");
+            ResizeGrid();
+
+            /*
+           * CONVERT DIALOG TITLE TO HTML
+           * REF: http://stackoverflow.com/questions/14488774/using-html-in-a-dialogs-title-in-jquery-ui-1-10
+           */
+
+            $.widget("ui.dialog", $.extend({}, $.ui.dialog.prototype, {
+                _title: function (title) {
+                    if (!this.options.title) {
+                        title.html("&#160;");
+                    } else {
+                        title.html(this.options.title);
+                    }
+                }
+            }));
+
+            $('#dialog_error').dialog({
+                autoOpen: false,
+                width: 600,
+                resizable: false,
+                modal: true,
+                title: "<div class='widget-header'><h4><i class='fa fa-warning'></i> Report</h4></div>",
+                buttons: [{
+                    html: "<i class='fa fa-times'></i>&nbsp; Close",
+                    "class": "btn btn-danger",
+                    click: function () {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+
+        });
+        $(window).on("resize", function () {
+            ResizeGrid();
+        });
+
+        $("#show_col1").on("click", function () {
+            var grid = $("#outboundGrid").data("kendoGrid");
+            grid.showColumn(0);
+        });
+
+        $("#hide_col1").on("click", function () {
+            var grid = $("#outboundGrid").data("kendoGrid");
+            grid.hideColumn(0);
+        });
+        function ResizeGrid() {
+            var gridElement = $("#outboundGrid"),
+                dataArea = gridElement.find(".k-grid-content"),
+                gridHeight = gridElement.innerHeight(),
+                otherElements = gridElement.children().not(".k-grid-content"),
+                otherElementsHeight = 0;
+            var gridHeight = $(window).height() - 250;
+            dataArea.height(gridHeight);
+        }
+
+        function SearchOutboundShipment() {
+            $("#outboundGrid").data("kendoGrid").dataSource.read();
+        }
+
+        function VisibleFilter(target) {
+            $(".date-filter").hide();
+            $(".textfilter").hide();
+            $(target).show();
+        }
+        function ordersDetails(orders) {
+            var action = '@Url.Action("OrdersInfo", "Orders")';
+
+            var html = kendo.format("<a href='{0}?orderKey={1}'>" + orders.OrderKey + "</a>",
+                action,
+                orders.OrderKey
+            );
+
+            return html;
+        }
+
+        function VisibleColumns(cat) {
+            var grid = $("#outboundGrid").data("kendoGrid");
+            grid.hideColumn("OrderDate");
+            grid.hideColumn("DeliveryDate");
+            grid.hideColumn("StorerKey");
+            grid.hideColumn("OrderKey");
+            grid.hideColumn("LoadingPoint");
+            grid.hideColumn("ExternOrderKey");
+            grid.hideColumn("ShippingInstructions1");
+            grid.hideColumn("Sku");
+            grid.hideColumn("SkuDescription");
+            grid.hideColumn("OpenQty");
+            grid.hideColumn("QtyAllocated");
+            grid.hideColumn("QtyPicked");
+            grid.hideColumn("ShippedQty");
+            if (cat == "1") {
+                grid.showColumn("OrderDate");
+                grid.showColumn("DeliveryDate");
+                grid.showColumn("StorerKey");
+                grid.showColumn("OrderKey");
+                grid.showColumn("LoadingPoint");
+                grid.showColumn("ExternOrderKey");
+                grid.showColumn("ShippingInstructions1");
+                grid.showColumn("OpenQty");
+                grid.showColumn("QtyAllocated");
+                grid.showColumn("QtyPicked");
+                grid.showColumn("ShippedQty");
+            }
+            else {
+                grid.showColumn("OrderDate");
+                grid.showColumn("DeliveryDate");
+                grid.showColumn("StorerKey");
+                grid.showColumn("OrderKey");
+                grid.showColumn("LoadingPoint");
+                grid.showColumn("ExternOrderKey");
+                grid.showColumn("ShippingInstructions1");
+                grid.showColumn("OpenQty");
+                grid.showColumn("QtyAllocated");
+                grid.showColumn("QtyPicked");
+                grid.showColumn("ShippedQty");
+                grid.showColumn("Sku");
+                grid.showColumn("SkuDescription");
+            }
+        }
+        function ExportExcelOrdersTransection(orderkey) {
+            var d = new Date();
+            var ai = {
+                orderKey: orderkey
+            };
+            $.ajax({
+                url: '@Url.Action("ExportOrdersTransectionReport", "Orders")',
+                type: 'POST',
+                data: JSON.stringify(ai),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    if (data.Result) {
+                        if (data.RecordCount == 0) {
+                            $('#dialog_error').html("<p>" + data.ErrorMessage + "</p>");
+                            $('#dialog_error').dialog('open');
+                        }
+                        else {
+
+                            var url = '@Url.Action("Download", "CustomsReport")?fileGuid=' + data.FileGuid + '&filename=' + data.FileName;
+                            window.location = url;
+
+                            var n = d.getSeconds();
+                            $.smallBox({
+                                title: "Export orders transection completed. ",
+                                content: "<i class='fa fa-clock-o'></i> <i>" + n + " Sec...</i>",
+                                color: "#296191",
+                                iconSmall: "fa fa-thumbs-up bounce animated",
+                                timeout: 4000
+                            });
+                        }
+                    }
+                    else {
+                        $('#dialog_error').html("<p>" + data.ErrorMessage + "</p>");
+                        $('#dialog_error').dialog('open');
+                    }
+                    $("#inboundExportExcel").removeAttr('disabled');
+                },
+                error: function (xhr) {
+                    $('#dialog_error').html("<p>" + xhr.responseText + "</p>");
+                    $('#dialog_error').dialog('open');
+                    $("#inboundExportExcel").removeAttr('disabled');
+                }
+            });
+        }
+    </script>
+
+</div>
