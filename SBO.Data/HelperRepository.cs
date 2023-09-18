@@ -230,6 +230,7 @@ namespace WMSPortal.Data
         public DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName)
         {
             //string spName = parameters.First().PROCEDURE_NAME.Replace(";1","");
+            int commandTimeout = 300;
             string spName = storeprocedureName.Replace(";1", "");
             var cn = new SqlConnection(this.WMSConnectionString());
             try
@@ -239,7 +240,7 @@ namespace WMSPortal.Data
                 IDataReader reader;
                 if (parameters == null)
                 {
-                    reader = cn.ExecuteReader(spName, commandType: CommandType.StoredProcedure);
+                    reader = cn.ExecuteReader(spName, commandTimeout: commandTimeout, commandType: CommandType.StoredProcedure);
                 }
                 else
                 {
@@ -247,7 +248,7 @@ namespace WMSPortal.Data
                     {
                         p.Add(parameter.COLUMN_NAME, parameter.COLUMN_VALUE);
                     }
-                    reader = cn.ExecuteReader(spName, p, commandType: CommandType.StoredProcedure);
+                    reader = cn.ExecuteReader(spName, p, commandTimeout: commandTimeout, commandType: CommandType.StoredProcedure);
                 }
 
                 DataTable table = new DataTable();

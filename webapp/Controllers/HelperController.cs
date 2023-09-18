@@ -58,7 +58,7 @@ namespace WMSPortal.Controllers
         public JsonResult GetStoreProcedureReport()
         {
             IEnumerable<StoreProcedure> storeProcedures = _helperRepository.GetStoreProcedureReport();
-            storeProcedures = storeProcedures.Where(x => x.PROCEDURE_NAME.Contains("RPT_"));
+            storeProcedures = storeProcedures.Where(x => x.PROCEDURE_NAME.StartsWith("RPT"));
             return Json(storeProcedures, JsonRequestBehavior.AllowGet);
         }
 
