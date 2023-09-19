@@ -12,6 +12,8 @@ using Dapper;
 using DapperExtensions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Configuration;
+using System.Diagnostics.Eventing.Reader;
 
 namespace WMSPortal.Data
 {
@@ -229,8 +231,13 @@ namespace WMSPortal.Data
 
         public DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName)
         {
-            //string spName = parameters.First().PROCEDURE_NAME.Replace(";1","");
             int commandTimeout = 300;
+            string timeout = ConfigurationManager.AppSettings["CommandTimeout"];
+            if (timeout != null)
+                commandTimeout = Convert.ToInt32(timeout);
+           
+            //string spName = parameters.First().PROCEDURE_NAME.Replace(";1","");
+       
             string spName = storeprocedureName.Replace(";1", "");
             var cn = new SqlConnection(this.WMSConnectionString());
             try
