@@ -17,7 +17,7 @@ namespace WMSPortal.ViewModels
             foreach (PropertyInfo prop in Props)
             {
                 //Setting column names as Property names
-                dataTable.Columns.Add(prop.Name);
+                dataTable.Columns.Add(prop.Name,prop.GetType());
             }
             foreach (T item in items)
             {

@@ -53,15 +53,17 @@
             }
         });
     }
-
+    //in the success handler of the AJAX method call the function below with the received data:
+    var dateFields = [];
     function generateGrid(gridData) {
 
         var outputGrid = $("#gridResults").data("kendoGrid");
         if (outputGrid) {
             $("#gridResults").empty();
         }
-        var model = generateModel(gridData[0]);
-
+        
+        var model = generateModel(gridData);
+        
         var parseFunction;
 
         if (dateFields.length > 0) {
@@ -69,20 +71,22 @@
                 for (var i = 0; i < response.length; i++) {
                     for (var fieldIndex = 0; fieldIndex < dateFields.length; fieldIndex++) {
                         var record = response[i];
-                        record[dateFields[fieldIndex]] = kendo.parseDate(record[dateFields[fieldIndex]]);
+                        var dateValue = kendo.parseDate(record[dateFields[fieldIndex]]);
+                        if (dateValue != null)
+                            record[dateFields[fieldIndex]] = kendo.parseDate(record[dateFields[fieldIndex]]);
                     }
                 }
                 return response;
             };
         }
-
-        var cols = generateColumns(gridData[0]);
+        
+        var cols = generateColumns(gridData[0], model);
 
         var grid = $("#gridResults").kendoGrid({
             dataSource: {
                 data: gridData,
                 schema: {
-                    model: model,
+                    model: model
                 },
                 pageSize: 200
             },
@@ -109,13 +113,27 @@
             }
         });
     }
-
-    function generateModel(gridData) {
+    function getFirtFieldValues(data, fieldName) {
+        var firstValue;
+        for (var i = 0; i < data.length; i++) {
+            if (data[i][fieldName] != '' && data[i][fieldName] != null) {
+                firstValue = data[i][fieldName];
+                return firstValue;
+            }
+        }
+        return firstValue;
+    }
+    function generateModel(data) {
         var model = {};
         var fields = {};
-        for (var property in gridData) {
-            var propType = typeof gridData[property];
+        var gridData = data[0];
 
+        
+        for (var property in gridData) {
+            var value = getFirtFieldValues(data, property)
+
+            //var propType = typeof gridData[property];
+            var propType = typeof value;
             if (propType == "number") {
                 fields[property] = {
                     type: "number",
@@ -131,7 +149,8 @@
                     }
                 };
             } else if (propType == "string") {
-                var parsedDate = kendo.parseDate(gridData[property]);
+                
+                var parsedDate = kendo.parseDate(value);
                 if (parsedDate) {
                     fields[property] = {
                         type: "date",
@@ -161,20 +180,25 @@
         return model;
     }
 
-    function generateColumns(gridData) {
+    function generateColumns(gridData,model) {
         gridColumnGeneration = [];
         var fields = {};
         for (var property in gridData) {
-            var propType = typeof gridData[property];
-
+            //var propType = typeof gridData[property];
+            var propType = model.fields[property].type
+            
             if (propType == "string") {
-                var parsedDate = kendo.parseDate(gridData[property]);
-                if (parsedDate) {
-                    gridColumnGeneration.push({ title: property, field: property, template: '#=kendo.toString(' + property + ',"dd/MM/yyyy")#' })
-                } else {
-                    gridColumnGeneration.push({ title: property, field: property })
-                }
-            } else {
+                gridColumnGeneration.push({ title: property, field: property })
+                //var parsedDate = kendo.parseDate(gridData[property]);
+                //if (parsedDate) {
+                //    gridColumnGeneration.push({ title: property, field: property, template: '#=kendo.toString(' + property + ',"dd/MM/yyyy")#' })
+                //} else {
+                //    gridColumnGeneration.push({ title: property, field: property })
+                //}
+            } else if (propType == "date") {
+                gridColumnGeneration.push({ title: property, field: property, template: '#=kendo.toString(' + property + ',"dd/MM/yyyy")#' })
+            }
+            else {
                 gridColumnGeneration.push({ title: property, field: property })
             }
 
