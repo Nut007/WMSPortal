@@ -2,6 +2,7 @@
     WMSPortal.Core.Model.User currentUser = (WMSPortal.Core.Model.User)HttpContext.Current.Session["userRoles"];
 }
 <header id="header">
+    
     <div id="logo-group">
         <!-- PLACE YOUR LOGO HERE -->
         <span id="logo-main">
@@ -12,13 +13,13 @@
             @if (Request.IsAuthenticated)
             {
                 <!-- Note: The activity badge color changes when clicked and resets the number to 0
-            Suggestion: You may want to set a flag when this happens to tick off all checked messages / notifications -->
+                Suggestion: You may want to set a flag when this happens to tick off all checked messages / notifications -->
                 <span id="activity"> <i class="fa fa-cog"></i> <b class="badge"> @currentUser.Roles.Count() </b> </span>
             }
         </span>
         @if (Request.IsAuthenticated)
         {
-        <!-- projects dropdown -->
+            <!-- projects dropdown -->
             <div class="project-context hidden-xs">
                 <span class="label">Connections:</span>
                 <span id="connection-selector" class="project-selector dropdown-toggle" data-toggle="dropdown">@currentUser.CurrentRoleConnection.Name <i class="fa fa-angle-down"></i></span>
@@ -28,18 +29,18 @@
                     @foreach (var item in currentUser.Roles)
                     {
                         <li>
-                            <a href="#" onclick="ChangeConnection('@item.Id','@item.Name')">@item.Name</a>
+                            <a href="#" onclick="ChangeConnection('@item.Id', '@item.Name')">@item.Name</a>
                         </li>
                     }
                 </ul>
                 <!-- end dropdown-menu-->
             </div>
-        <!-- end projects dropdown -->
+            <!-- end projects dropdown -->
         }
         <!-- END LOGO PLACEHOLDER -->
 
     </div>
-    
+
 
 
     <section id="top-right">
@@ -56,18 +57,46 @@
     </section>
 </header>
 <script>
+    var _urlChangeConnection = '@Url.Action("ChangeConnection", "Home")';
     function ChangeConnection(connectionId, connectionName) {
+        
+        var path = window.location.pathname; // path only
+        var url = window.location.href;     // full URL
+        
         var returnUrl = $('#nav-main .active > a').attr('href');
         $("#connection-selector").html(connectionName + " <i class='fa fa-angle-down'></i>");
-        //alert(connectionName);
+        var html_page = "";
+        var active_url = $('#nav-main li li.active a').attr('href');
+
         $.ajax({
-            url: "/Home/Index",
+            url: _urlChangeConnection,
             type: 'POST',
             contentType: "application/json;charset=utf-8",
             data: JSON.stringify({ connectionId: connectionId }),
             dataType: "json",
             complete: function (data) {
-                window.location.href = returnUrl;
+                if (data.responseJSON.status === 'OK') {
+                    if (typeof active_url !== "undefined") {
+                        $.ajax({
+                            url: active_url,
+                            type: 'GET',
+                            success: function (data) {
+                                var html = data.replace('<div id="content">', '<div>');
+                                $('#content').html(html);
+                            }
+                        });
+                    }
+                   
+                }
+                else {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: "The status cannot be updated at this time",
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
             }
 
         });

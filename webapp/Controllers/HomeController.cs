@@ -28,6 +28,7 @@ namespace WMSPortal.Controllers
     public class HomeController : Controller
     {
         private readonly IOrdersRepository _ordersRepository;
+        private IUserRepository _userRepository;
         public class Det
         {
             public int Id;
@@ -42,14 +43,28 @@ namespace WMSPortal.Controllers
         public ICacheProvider Cache { get; set; }
        
         // GET: home/index
-        public HomeController(ICacheProvider cacheProvider, IOrdersRepository ordersRepository)
+        public HomeController(ICacheProvider cacheProvider, IOrdersRepository ordersRepository, IUserRepository userRepository)
         {
             this.Cache = cacheProvider;
             _ordersRepository = ordersRepository;
+            _userRepository = userRepository;
         }
         public ActionResult Keepalive()
         {
             return Json("OK", JsonRequestBehavior.AllowGet);
+        }
+        public ActionResult ChangeConnection(string connectionId)
+        {
+            //var currentUrl = new UrlHelper(System.Web.HttpContext.Current.Request.RequestContext);
+            var currentUrl = this.Request.Url;
+            var user  = ((User)System.Web.HttpContext.Current.Session["userRoles"]);
+          
+            Role roleConnection = user.Roles.Where(s => s.Id == Convert.ToInt16(connectionId)).SingleOrDefault();
+
+            Cache.Invalidate("RoleConnection");
+            Cache.Set("RoleConnection", roleConnection);
+
+            return Json(new { Url = currentUrl, status = "OK" }, JsonRequestBehavior.AllowGet);
         }
         public ActionResult Logout()
         {
