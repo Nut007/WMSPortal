@@ -82,6 +82,7 @@
   <ItemGroup>
     <Compile Include="ApplicationRoleRepository.cs" />
     <Compile Include="AttachmentRepository.cs" />
+    <Compile Include="EncryptionHelper.cs" />
     <Compile Include="HelperRepository.cs" />
     <Compile Include="DefaultCacheProvider.cs" />
     <Compile Include="CodelkupRepository.cs" />

@@ -23,7 +23,14 @@ namespace WMSPortal.Data
       
         protected override void Load(ContainerBuilder builder)
         {
+            
             var connectionString = ConfigurationManager.ConnectionStrings[this._ConnectionString].ConnectionString;
+            
+            System.Data.SqlClient.SqlConnectionStringBuilder cnnBuilder = new System.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
+            
+            cnnBuilder.Password= EncryptionHelper.Decrypt(cnnBuilder.Password);
+            connectionString= cnnBuilder.ConnectionString;
+
             //Database connection
             builder.Register(c => new SqlConnection(connectionString)).As<IDbConnection>().InstancePerLifetimeScope();
             //Sql generators

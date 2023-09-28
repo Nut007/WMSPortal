@@ -31,7 +31,7 @@ namespace WMSPortal.Data
 
         #endregion
 
-        protected DataRepository(ICacheProvider cache,IDbConnection connection, ISqlGenerator<T> sqlGenerator)
+        protected DataRepository(ICacheProvider cache, IDbConnection connection, ISqlGenerator<T> sqlGenerator)
         {
             Connection = connection;
             SqlGenerator = sqlGenerator;
@@ -61,7 +61,7 @@ namespace WMSPortal.Data
         public virtual bool Insert(T instance)
         {
             bool added = false;
-           
+
             var sql = SqlGenerator.GetInsert();
 
             if (SqlGenerator.IsIdentity)
@@ -173,6 +173,6 @@ namespace WMSPortal.Data
             builder["uid"] = activeConnection.UserName;
             builder["password"] = activeConnection.Password;
             return builder.ConnectionString;
-    }
+        }
     }
 }
