@@ -8,6 +8,7 @@
     {
         $("#gridResults").removeClass("k-grid k-widget");
         var item = $('#reports').data("kendoDropDownList");
+
         $("#parameterGrid").data("kendoGrid").dataSource.read();
 
         var outputGrid = $("#gridResults").data("kendoGrid");
@@ -15,6 +16,15 @@
         {
             $("#gridResults").removeData('kendoGrid');
             $("#gridResults").empty();
+        }
+        if (item.value() == "RPT_ADHOC") {
+            $('#sqlContainer').show();
+            $('#parametersContainer').hide();
+            $("#sql").val("");
+        }
+        else {
+            $('#sqlContainer').hide();
+            $('#parametersContainer').show();
         }
     }
 
@@ -30,8 +40,8 @@
         var grid = $("#parameterGrid").data("kendoGrid");
         var dataSource = grid.dataSource;
         var spName = $("#reports").data("kendoDropDownList").value();
-        
-        var rows = JSON.stringify({ 'parameters': dataSource.data().toJSON(), 'storeprocedureName': spName });
+        var sql = $("#sql").val();
+        var rows = JSON.stringify({ 'parameters': dataSource.data().toJSON(), 'storeprocedureName': spName, 'sql': sql });
 
         $.ajax({
             method: "POST",
@@ -41,14 +51,26 @@
             cache: false,
             async: true,
             success: function (data) {
-                generateGrid(data.Data);
+                if (data.result == false) {
+                    $.when(kendo.ui.ExtAlertDialog.show({
+                        title: "Error",
+                        message: data.error,
+                        icon: "k-ext-error",
+                        width: 500,
+                        height: 120
+                    }))
+                }
+                else {
+                    generateGrid(data.Data);
+                }
+                $('#load').hide();
                 $('#btnExecuteReport').prop('disabled', false);
                 kendo.ui.progress($("#gridResults"), false);
-                $('#load').hide();
             },
             error: function (err) {
-                console.log('Failed to get data' + err);
+                console.log('Failed to get data' + err.error);
                 kendo.ui.progress($("#gridResults"), false);
+                $('#btnExecuteReport').prop('disabled', false);
                 $('#load').hide();
             }
         });
@@ -240,6 +262,10 @@
     </div>
     <div id="parametersContainer" class="margin-bottom-10">
         @Html.Partial("_ParameterGrid")
+    </div>
+    <div id="sqlContainer" style="display:none" class="margin-bottom-10">
+        <div class="p-4 m-2 bg-primary text-white"><span class="margin-left-5">SQL Query</span></div>
+        @Html.TextArea("sql", "", new { @class = "k-textbox", style = "width: 100%;", @rows = 10 })
     </div>
     <div id="load" style="display:none" class="row-centered">
         Please wait...

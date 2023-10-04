@@ -16,6 +16,7 @@ namespace WMSPortal.Data
     public class DataModule : Module
     {
         private string _ConnectionString;
+        private readonly int _iteration = 3;
         public DataModule(string connectionString)
         {
             this._ConnectionString = connectionString;

@@ -42,12 +42,18 @@ namespace WMSPortal.Controllers
             DataTable dt = converter.ToDataTable(storers.ToList());
             return Json(dt.ToDataSourceResult(request));
         }
-        public ActionResult ExecuteReport([DataSourceRequest]DataSourceRequest request, List<StoreProcedure> parameters,string storeprocedureName)
+        public ActionResult ExecuteReport([DataSourceRequest]DataSourceRequest request, List<StoreProcedure> parameters,string storeprocedureName ,string sql)
         {
-            var results = _helperRepository.GetReportResult(parameters, storeprocedureName);
-            var jsonResult = Json(results.ToDataSourceResult(request), JsonRequestBehavior.AllowGet);
-            jsonResult.MaxJsonLength = int.MaxValue;
-            return jsonResult;
+            try
+            {
+                var results = _helperRepository.GetReportResult(parameters, storeprocedureName, sql);
+                var jsonResult = Json(results.ToDataSourceResult(request), JsonRequestBehavior.AllowGet);
+                jsonResult.MaxJsonLength = int.MaxValue;
+                return jsonResult;
+            }
+            catch(Exception ex){
+                return Json(new { result = false, error = ex.Message });
+            }
         }
         //public ActionResult ExecuteReport([DataSourceRequest]DataSourceRequest request,List<StoreProcedure> parameters)
         //{
@@ -58,14 +64,21 @@ namespace WMSPortal.Controllers
         public JsonResult GetStoreProcedureReport()
         {
             IEnumerable<StoreProcedure> storeProcedures = _helperRepository.GetStoreProcedureReport();
-            storeProcedures = storeProcedures.Where(x => x.PROCEDURE_NAME.StartsWith("RPT"));
-            return Json(storeProcedures, JsonRequestBehavior.AllowGet);
+            List<StoreProcedure> procs = storeProcedures.ToList();
+            procs.Add(new StoreProcedure()
+            {
+                PROCEDURE_NAME = AdditionalQuery.RPT_ADHOC.ToString()
+            });
+            IEnumerable<StoreProcedure> results =procs.Where(x => x.PROCEDURE_NAME.StartsWith("RPT")).Select(i => i);
+            return Json(results, JsonRequestBehavior.AllowGet);
         }
 
         public ActionResult GetStoreProcedureColumns([DataSourceRequest] DataSourceRequest request, string storeProcedureName)
         {
             IEnumerable<StoreProcedure> storeColumns = _helperRepository.GetStoreProcedureColumns(storeProcedureName).Where(x=>x.COLUMN_NAME != "@RETURN_VALUE");
             return Json(storeColumns.ToDataSourceResult(request));
+            
+            
         }
         //public JsonResult GetStoreProcedureColumns (string storeProcedureName)
         //{GetStoreProcedureReport

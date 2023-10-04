@@ -229,7 +229,7 @@ namespace WMSPortal.Data
             }
         }
 
-        public DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName)
+        public DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName, string sql)
         {
             int commandTimeout = 300;
             string timeout = ConfigurationManager.AppSettings["CommandTimeout"];
@@ -237,7 +237,7 @@ namespace WMSPortal.Data
                 commandTimeout = Convert.ToInt32(timeout);
            
             //string spName = parameters.First().PROCEDURE_NAME.Replace(";1","");
-       
+            
             string spName = storeprocedureName.Replace(";1", "");
             var cn = new SqlConnection(this.WMSConnectionString());
             try
@@ -247,7 +247,24 @@ namespace WMSPortal.Data
                 IDataReader reader;
                 if (parameters == null)
                 {
-                    reader = cn.ExecuteReader(spName, commandTimeout: commandTimeout, commandType: CommandType.StoredProcedure);
+                    if (storeprocedureName == AdditionalQuery.RPT_ADHOC.ToString())
+                    {
+                        reader = cn.ExecuteReader(sql, commandTimeout: commandTimeout, commandType: CommandType.Text);
+                        if (reader.FieldCount == 0)
+                        {
+                            DataTable dt = new DataTable();
+                            DataColumn dc = new DataColumn("Messages", typeof(String));
+                            dt.Columns.Add(dc);
+                            DataRow dr = dt.NewRow();
+                            dr[0] = $"{reader.RecordsAffected} row affected";
+                            dt.Rows.Add(dr);
+                            return dt;
+                        }
+                        
+                    }
+                    else {
+                        reader = cn.ExecuteReader(spName, commandTimeout: commandTimeout, commandType: CommandType.StoredProcedure);
+                    }
                 }
                 else
                 {

@@ -19,6 +19,6 @@ namespace WMSPortal.Data.Repositories
         string GetDocumentNo(DocumentType docType);
         IEnumerable<StoreProcedure> GetStoreProcedureReport();
         IEnumerable<StoreProcedure> GetStoreProcedureColumns(string procedureName);
-        DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName);
+        DataTable GetReportResult(List<StoreProcedure> parameters, string storeprocedureName,string sql);
     }
 }

@@ -80,4 +80,8 @@ namespace WMSPortal.Core.Model
         Access = 3,
         Execute = 4
     }
+    public enum AdditionalQuery
+    {
+        RPT_ADHOC
+    }
 }
